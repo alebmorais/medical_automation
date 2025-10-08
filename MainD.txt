@@ -1,0 +1,38 @@
+Resumo do Projeto: Sistema de Automação Médica
+
+Usuário: Alessandra Morais (Neurologia)
+
+Objetivo Principal:
+
+Criar um sistema de automação para agilizar atendimentos médicos, permitindo inserção rápida de frases pré-definidas em consultas, telemedicina e prontuários.
+
+Arquitetura do Sistema:
+
+- Hardware: Raspberry Pi Zero 2W como servidor central
+- Conectividade: Wi-Fi (Pi conectado à rede local) - Quando estiver funcionando, vamos configurar para o dispositivo acessar internet através do PC ou Mac
+- Abordagem: Híbrida - interface web acessível de qualquer dispositivo
+
+Funcionalidades Implementadas:
+
+1. Banco de Dados Hierárquico:
+- Categorias principais (ex: "Atendimentos Gerais", "TeleAVC")
+- Subcategorias por especialidade (ex: "Cefaleia", "Crise", "Paralisia Facial")
+- Frases ordenadas por sequência de atendimento
+- Conteúdo específico para neurologia com protocolos e questionários
+2. Interface Web Responsiva:
+- Design médico profissional (azul/branco)
+- Navegação em 3 colunas: Categorias → Subcategorias → Frases
+- Atalhos rápidos para cumprimentos (bom dia, boa tarde, etc.)
+- Preview de frases antes da utilização
+- Compatível com Mac, Windows, tablets e celulares
+3. Sistema de Cópia Avançado:
+- Formatação automática de quebras de linha
+- Fallback para diferentes navegadores
+- Atalhos de teclado (Cmd+1, Cmd+2, etc.)
+- Feedback visual de sucesso
+4. Especialização Médica:
+- Protocolos de cefaleia, crise convulsiva, AVC
+- Questionários estruturados para anamnese
+- Prescrições padronizadas com dosagens
+- Orientações de retorno e sinais de alarme
+- Fluxos específicos para TeleAVC

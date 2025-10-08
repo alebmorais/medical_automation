@@ -1,0 +1,283 @@
+CATEGORIA: Atendimento Gerais
+SUBCATEGORIA: Inicio
+1. Bom dia, tudo bem? Qual seria a solicitação, por gentileza?
+2. Boa tarde, tudo bem? Qual seria a solicitação, por gentileza?
+3. Boa noite, tudo bem? Qual seria a solicitação, por gentileza?
+4. Olá, tudo bem? Um momento, por favor. Estou finalizando a discussão de outro caso.
+5. Qual seria a dúvida, por gentileza? 
+6. Em que posso ajudar, por gentileza?
+7. Pode prosseguir.
+
+CATEGORIA: Atendimento Gerais
+SUBCATEGORIA: Cefaleia
+1. O que foi feito de analgesia até o momento?
+2. Realizar dipirona 1 g IV + AINE IV + Dramin B6 IV + Dexa 4 mg IV / Caso não melhore,  Clorpromazina (amplictil) 01 FA + 250 ml SF 0,9% IV correr em 1 hora. De preferência se for fazer o amplictil, correr 500 ml de soro aberto antes.
+3. Por favor responder os seguintes questionamentos:
+
+- quando iniciou a cefaleia?
+- no inicio da dor, em quanto tempo ela atingiu o pico maximo?
+- se caracteriza por ser latejante? em aperto? choque? facada?
+- a dor de cabeça é inedita? mudou o padrão?
+- tem irradiação?
+- qual intensidade de 0 a 10?
+- tem fatores desencadeantes?
+- piora com luz?barulho? aos esforços?
+- tem nausea ou vomito associado?
+- tem sintomas visais ou dormencias asociados?
+- teve febre ou outro sintoma sistemico?
+- sofreu tce recente?
+- tem comorbidades?
+-tem história de cefaleia prévia?
+
+>> Como é o exame neurológico básico?
+- glasgow
+- alteração de linguagem?
+- confusão mental?
+- pupilas?
+- desvio ocular ou estrabismo novo?
+- nistagmo?
+- desvio de rima labial?
+- assimetria de força em algum lado do corpo? Se sim qual e em qual grau?
+-Sensibilidade para dor e toque?
+-Sensibilidade profunda? (posicional, palestésica)
+-reflexos?
+-Romberg?
+- ataxia?
+-está deambulando, mesmo que com ajuda ? Como é a marcha?
+- sinais de irritação meníngea?
+>>por favor,  paciente já realizou exame de imagem?
+se sim, qual resultado?
+
+
+
+CATEGORIA: Atendimento Gerais
+SUBCATEGORIA: Crise
+1. Realizar Fenitoína dose de ataque -  Primeira dose da convulsão 15mg/kg - Diluir em 250ml de SF0,9% EV, BIC, Correr em 30min - Vel max 50mg/min
+2. Manutenção Fenitoína 100 mg IV 8/8h
+3. Por gentileza, dar mais detalhes do quadro.
+
+Como foi o evento?
+Durante o evento:
+- Houve mordedura de língua?
+- Paciente estava com olhos abertos ou fechados?
+- Paciente parou de contactuar por um período e voltou?
+- Quanto tempo durou?
+- Voltou ao seu estado basal após?
+- Houve confusão prolongada pós ictal?
+-Teve alteração comportamental associada?
+-Febre ou sintomas sistêmicos?
+
+Paciente teve prodromos de lipotimia?
+Sudorese fria?
+Palpitações?
+
+Usou alguma medicação, álcool, substância antes dos eventos?
+
+Comorbidades? Já teve episódio semelhante antes? Se sim quanto, quantos e quais?
+Uso crônico de medicações?
+
+Tem Exames laboratoriais gerais, eletrólitos, função renal,hepática,tereoideana ? ECG?
+
+Como é o exame neurológico atual?
+- glasgow
+- alteração de linguagem?
+- confusão mental?
+- pupilas?
+- desvio ocular ou estrabismo novo?
+- nistagmo?
+- desvio de rima labial?
+- assimetria de força em algum lado do corpo?
+- sensibiliade?
+-reflexos?
+- coordenação?
+- ataxia?
+-está deambulando?
+- sinais de irritação meníngea?
+4. Solicitar rastreio infectometabólico completo (incluindo eletrólitos,hemograma, pcr, função renal e hepática com bilirrubinas, gaso venosa, sumário de urina, rx de tórax) + troponina + ECG + cpk + CKMB
+Solicitar ECG + Tc de crânio
+5. Caso paciente mantenha-se estável e descartadas causas infectometabólicas, poderá ser liberado para acompanhamento ambulatorial
+Diante de primeira crise não há indicação formal de início de fármaco
+Manter observação e fazer orientações
+Solicitar EEG ambulatorialmente
+Encaminhar para ambulatório da neurologia
+6. Paciente está fazendo uso regular das medicações? Teve episódio de estresse? Privação de sono? Uso de substâncias?
+7. Iniciar tratamento com Levetiracetam 250 mg de 12/12h por 10 dias, após esse período, ajustar para 250 mg pela manhã e 500 mg à noite por mais 10 dias, e posteriormente manter 500 mg de 12/12h.
+Solicitar eletroencefalograma (EEG) em caráter ambulatorial.
+Encaminhar para acompanhamento ambulatorial com serviço de neurologia.
+8. Lakos (lacosamida): iniciar com 50mg à noite. Após 5 dias aumentar para 50mg de 12/12h. Após 5 dias aumentar para 50mg manhã e 100mg noite. Após mais 5 dias aumentar para 100mg de 12/12h.
+Solicitar eletroencefalograma (EEG) em caráter ambulatorial.
+Encaminhar para acompanhamento ambulatorial com serviço de neurologia.
+9. Lamotrigina Iniciar 25 mg ao dia por duas semanas. Após isso, aumentar para 50 mg 1x/dia por 2 semanas.
+Após mais duas semanas, fazer 25 mg pela manhã e 50 à noite
+Após mais duas semans, 50 mg 2x/dia
+Em caso lesao de pele ou mucosa cessar imediatamente e procurar pronto socorro
+Solicitar eletroencefalograma (EEG) em caráter ambulatorial.
+Encaminhar para acompanhamento ambulatorial com serviço de neurologia.
+10. Ácido Valpróico 250 mg 2x/dia por 5 dias, após isso, 500 mg 2x/dia por 10 dias e após mais 10 dias 500 mg 8/8h. 
+Solicitar eletroencefalograma (EEG) em caráter ambulatorial.
+Encaminhar para acompanhamento ambulatorial com serviço de neurologia.
+11. Carbamazepina 200 mg
+1 comprimido 12/12h por 14 dias
+Após isso,
+1 comprimido 8/8h por 14 dias
+Após isso,
+1 comprimido pela manhã, 1 a tarde e 2 a noite por 14 dias,
+Após isso,
+1 comprimido pela manhã, 2 a tarde e 2 a noite por 14 dias,
+Após isso, 2 comprimidos 8/8h
+Solicitar eletroencefalograma (EEG) em caráter ambulatorial.
+Encaminhar para acompanhamento ambulatorial com serviço de neurologia.
+12. Carbamazepina 200 mg
+1 comprimido à noite por 7 dias
+Após isso,
+1 comprimido 12/12h por 14 dias
+Após isso,
+1 comprimido 8/8h por 14 dias
+Após isso,
+1 comprimido pela manhã, 1 a tarde e 2 a noite por 14 dias,
+Após isso,
+1 comprimido pela manhã, 2 a tarde e 2 a noite por 14 dias,
+Após isso, 2 comprimidos 8/8h
+Solicitar eletroencefalograma (EEG) em caráter ambulatorial.
+Encaminhar para acompanhamento ambulatorial com serviço de neurologia.
+
+
+CATEGORIA: Atendimento Gerais
+SUBCATEGORIA: Rastreio
+1. Solicitar rastreio infectometabólico completo incluindo eletrólitos,hemograma, pcr, função renal e hepática com bilirrubinas, gaso venosa, sumário de urina, rx de tórax, troponina, ECG
+2. Solicitar angiotc de cranio e cervical com fase arterial e venosa
+3. Paciente com provável delirium de origem 
+Solicitar rastreio infectometabólico completo incluindo eletrólitos,hemograma, pcr, função renal e hepática com bilirrubinas, gaso venosa, sumário de urina, rx de tórax, troponina, ECG.
+Oriento tratamento de doença de base e reavaliação caso quadro persista. No entanto, equipe mantém-se a disposição para qualquer mudança de quadro ou demais dúvidas para seguimento conjunto.
+
+CATEGORIA: Atendimento Gerais
+SUBCATEGORIA: Paralisia Facial
+1. Poderia fazer um video com esses movimentos para análise, por gentileza? 
+Os movimentos do exame da face seriam como está o sorriso forçado, piscamento, aspecto ao fechar os olhos com força e enrrugar a testa para cima.
+2. Orienta-se:
+Prednisona 60 mg/dia por 5 dias
+Uso diário de colírio lubrificante
+Usar proteção ocular à noite para evitar lesão de córnea
+Encaminhar para fisioterapia
+
+
+CATEGORIA: Atendimento Gerais
+SUBCATEGORIA: AVC - Pergunta Geral
+>> por gentileza, informar:
+- quais os sintomas?
+- início subito ou progressivo?
+-- se súbito, data e hora do início caso presenciado. Se não, quando foi visto bem pela última vez?
+-- se progressivo, como iniciaram e como evoluiram? foi de forma ascendente ou descendente?
+- quais as comorbidades?
+- quais as medicações de uso crônico?
+- tem exames laboratoriais? ECG?
+
+>> como é o exame neurológico básico? Qual NIHSS?
+- glasgow
+- alteração de linguagem?
+- confusão mental?
+- pupilas?
+- Movimentação ocular para todas as direções? desvio ocular ou estrabismo novo?
+- nistagmo?
+- desvio de rima labial?
+- assimetria de força em algum lado do corpo? Se sim qual e em qual grau?
+-Sensibilidade para dor e toque?
+-Sensibilidade profunda? (posicional, palestésica)
+-reflexos?
+-Romberg?
+- ataxia?
+-está deambulando, mesmo que com ajuda ? Como é a marcha?
+- sinais de irritação meníngea?
+
+
+CATEGORIA: Atendimento Gerais
+SUBCATEGORIA: Finalizacao
+1. Desculpe, mas está havendo troca de horário e outro colega assumirá o caso e sua discussão terá continuidade, ok? Obrigada
+2. Disponha! Bom plantão!
+3. Devido a inatividade do chat e necessidade de organização, esta janela está sendo encerrada. Para novas discussões ou mesmo início desta, solicitar novamente chamado. 
+4. Por motivos de organização, precisarei fechar esse chat. No entanto, é possível abrir novo chamado a qualquer momento quando os pedidos estiverem com resultados liberados ou houver outra necessidade. 
+
+
+CATEGORIA: Atendimentos TeleAVC
+SUBCATEGORIA: Inicio
+1. Bom dia! Me chamo Alessandra Morais, neurologista do programa TeleAVC. Estou disponível hoje das 07h às 19h. Bom plantão a todos!
+2. Olá! 
+
+
+
+CATEGORIA: Atendimentos TeleAVC
+SUBCATEGORIA: Atendimento Inicial 
+1. Olá, tudo bem? Vamos iniciar o atendimento! Estarei acompanhando passo a passo a condução e à disposição para qualquer dúvida ou solicitação.
+Preciso destacar que nossa comunicação é muito importante para validação do atendimento e do projeto. Então peço gentilmente que as comunicações sejam suspensas apenas depois das coletas finais de informações que serão solicitadas.
+
+Inicialmente, por gentileza, quais as seguintes informações:
+
+-Nome completo e conselho de classe do profissional de saúde
+
+-Nome completo do paciente:
+
+-Data de nascimento do paciente:
+
+-Número do prontuário:
+
+-Data e horário da chegada do paciente no Hospital:
+
+-HMA resumida
+
+-Data e horário do ictus (apenas se evento presenciado):
+
+-Data e horário em que foi visto bem pela última vez:
+
+-Antecedentes pessoais:
+
+-Medicações em uso:
+
+-Funcionalidade prévia ao AVC:
+
+-Peso:
+
+-Sinais vitais
+
+-Glicemia capilar:
+
+-Exame físico e neurológico:
+
+-NIHSS:
+
+-Presença de contraindicações à trombólise endovenosa pelo protocolo? Se sim, qual?
+
+2. Por gentileza, essas informações são importantes para a coleta de dados do projeto. Quando possível, após a tomada de conduta de emergência, compartilhar, pode ser escrito, por áudio ou ligação:
+
+-Número do CPF ou RG do paciente:
+
+-Origem do paciente (demanda espontânea, SAMU, UPA…):
+
+-Nome do contato de emergência/familiar responsável:
+
+-Telefone do contato de emergência/familiar responsável:
+
+-O paciente ou responsável legal consentiu no compartilhamento de seus dados pessoais e telefone para contato em 90 dias após esse atendimento, pela equipe do Projeto TeleAVC?
+
+-Data e horário da chegada do paciente no hospital satélite:
+
+-Data e horário do início do atendimento médico no hospital satélite:
+
+-Desfecho do caso (por exemplo, horário do bolus do trombolítico, se indicado)
+
+3. Pessoal, abaixo deixo alguns dados que, como mencionei com vocês, serão importantes para validação do atendimento e projeto, quando possível, me envie por gentileza.Pode ser escrito, por áudio ou ligação: Obrigada e estou a disposição!
+
+-Número do CPF ou RG do paciente:
+
+-Origem do paciente (demanda espontânea, SAMU, UPA…):
+
+-Nome do contato de emergência/familiar responsável:
+
+-Telefone do contato de emergência/familiar responsável:
+
+-O paciente ou responsável legal consentiu no compartilhamento de seus dados pessoais e telefone para contato em 90 dias após esse atendimento, pela equipe do Projeto TeleAVC?
+
+-Data e horário da chegada do paciente no hospital satélite:
+
+-Data e horário do início do atendimento médico no hospital satélite:
+
+-Desfecho do caso: Internação e manejo de AVCi conservador
