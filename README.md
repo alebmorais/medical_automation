@@ -160,11 +160,28 @@ O cliente Windows funciona como um "navegador dedicado" para a interface web, co
 
 ### Instalação das Dependências
 
-Com o Python instalado, abra o **PowerShell** ou **CMD** no Windows e execute:
+Com o Python instalado, abra o **PowerShell** ou **CMD** no Windows e execute o comando abaixo.
+
+**Atenção:** Este comando deve ser executado diretamente no terminal (PowerShell ou CMD), não dentro do interpretador Python (onde aparece o prompt `>>>`).
 
 ```bash
-pip install pywebview requests pyautogui pynput
+py -m pip install pywebview requests pyautogui pynput
 ```
+
+### Solução de Problemas (Windows)
+
+**Erro: `'pip'` ou `'py'` não é reconhecido como um comando**
+
+Se você receber uma mensagem como `'pip' is not recognized` ou `'py' is not recognized`, significa que o Python não foi adicionado corretamente ao "PATH" do sistema durante a instalação.
+
+**Solução Recomendada:**
+1.  Desinstale o Python do seu sistema.
+2.  Execute o instalador do Python novamente.
+3.  Na primeira tela da instalação, **marque a caixa "Add Python to PATH"** na parte inferior.
+4.  Prossiga com a instalação normalmente.
+5.  Feche e abra um novo terminal (PowerShell ou CMD) e tente o comando de instalação novamente.
+
+---
 
 ### Execução
 
