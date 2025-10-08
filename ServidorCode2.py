@@ -132,8 +132,7 @@ class MedicalAutomationServer:
         candidates = []
         locations = [self.base_dir, os.path.dirname(self.base_dir)]
         file_names = [
-            "SQL_File.sql",
-            "SQL_File",
+            "SQL2.sql",
             "database.sql",
             "automation.sql",
         ]
@@ -162,7 +161,7 @@ class MedicalAutomationServer:
         """Buscar categorias principais"""
         try:
             conn = sqlite3.connect(self.db_path)
-            cursor = conn.execute("SELECT DISTINCT categoria_principal FROM frases ORDER BY categoria_principal")
+            cursor = conn.execute("SELECT DISTINCT categoria_principal FROM frases")
             categorias = [row[0] for row in cursor]
             conn.close()
             return categorias
