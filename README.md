@@ -150,47 +150,50 @@ Seu servidor agora está configurado e rodando! Você pode desconectar do SSH. E
 
 ## Parte 2: Cliente Desktop para Windows
 
-O cliente Windows funciona como um "navegador dedicado" para a interface web, com funcionalidades extras.
+O cliente Windows é um aplicativo que se conecta ao servidor no seu Raspberry Pi. Para usá-lo, você precisa baixar os arquivos do projeto para o seu computador Windows.
 
-### Requisitos
+### Passo 1: Obter os Arquivos no Windows
 
-1.  **Python 3.10+** instalado no Windows.
-2.  **Dependências Python:** `pywebview` (cria a janela), `requests` (comunicação), `pyautogui` e `pynput` (para digitação automática e atalhos globais).
-3.  **[Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/)**: Geralmente já incluído no Windows 11. Para Windows 10, pode ser necessário instalar manualmente.
+**Baixe o Projeto:**
 
-### Instalação das Dependências
+1.  Vá para a página principal do projeto no GitHub: [https://github.com/alebmorais/medical_automation](https://github.com/alebmorais/medical_automation)
+2.  Clique no botão verde `< > Code` e depois em "Download ZIP".
+3.  Salve o arquivo no seu computador.
 
-Com o Python instalado, abra o **PowerShell** ou **CMD** no Windows e execute o comando abaixo.
+**Descompacte o Arquivo:**
 
-**Atenção:** Este comando deve ser executado diretamente no terminal (PowerShell ou CMD), não dentro do interpretador Python (onde aparece o prompt `>>>`).
+1.  Encontre o arquivo `medical_automation-main.zip` (geralmente na pasta "Downloads").
+2.  Clique com o botão direito sobre ele e selecione "Extrair tudo...".
+3.  Escolha um local fácil de acessar, como a sua Área de Trabalho.
+
+### Passo 2: Instalar e Executar o Cliente
+
+**Abra o Terminal na Pasta Certa:**
+
+1.  Navegue até a pasta que você acabou de extrair (ex: `medical_automation-main`).
+2.  Na barra de endereço do explorador de arquivos, digite `powershell` e pressione `Enter`. Isso abrirá um terminal do PowerShell diretamente nesse diretório.
+
+**Instale as Dependências:**
+
+No terminal que acabou de abrir, cole o comando abaixo e pressione `Enter`. Este comando foi ajustado para evitar erros de instalação.
 
 ```bash
 py -m pip install pywebview requests pyautogui pynput
 ```
 
-### Solução de Problemas (Windows)
+**Execute o Cliente:**
 
-**Erro: `'pip'` ou `'py'` não é reconhecido como um comando**
-
-Se você receber uma mensagem como `'pip' is not recognized` ou `'py' is not recognized`, significa que o Python não foi adicionado corretamente ao "PATH" do sistema durante a instalação.
-
-**Solução Recomendada:**
-1.  Desinstale o Python do seu sistema.
-2.  Execute o instalador do Python novamente.
-3.  Na primeira tela da instalação, **marque a caixa "Add Python to PATH"** na parte inferior.
-4.  Prossiga com a instalação normalmente.
-5.  Feche e abra um novo terminal (PowerShell ou CMD) e tente o comando de instalação novamente.
-
----
-
-### Execução
-
-Para iniciar o cliente, execute o script `ClienteWindows`:
+Após a instalação terminar, execute o cliente com o seguinte comando:
 
 ```bash
-python ClienteWindows
+py ClienteWindows
 ```
 
-O aplicativo tentará se conectar a `http://pi-medico.local:8080`. Se o servidor no Raspberry Pi estiver no ar, a interface será exibida.
+O aplicativo cliente deve abrir e se conectar automaticamente ao servidor no seu Raspberry Pi.
+
+### Solução de Problemas (Windows)
+
+**Erro: `'py'` não é reconhecido como um comando:**
+Isso significa que o Python não foi adicionado ao "PATH" do sistema. A solução mais fácil é reinstalar o Python. Durante a instalação, **marque a caixa "Add Python to PATH"** na primeira tela.
 
 
