@@ -39,7 +39,7 @@ python3 ServidorCode2
 
 Ao ser executado pela primeira vez, o servidor irá:
 1.  Procurar por um arquivo de banco de dados (`automation.db`).
-2.  Se não o encontrar, ele buscará um arquivo `SQL_File.sql` no diretório e o usará para **criar e popular o banco de dados automaticamente**.
+2.  Se não o encontrar, ele buscará um arquivo SQL de referência (como `SQL2.sql` ou `SQL_File.sql`) no diretório e o usará para **criar e popular o banco de dados automaticamente**.
 3.  Após a configuração, o servidor iniciará na porta `8080`.
 
 ### 4. Acessando a Interface
@@ -57,7 +57,7 @@ O cliente para Windows funciona como um "navegador dedicado" para a interface we
 ### Requisitos
 
 1.  **Python 3.10+** instalado no Windows.
-2.  **Dependências Python:** `pywebview`, `requests`.
+2.  **Dependências Python:** `pywebview` (recomendado), `requests`. Para funcionalidades completas (digitação automática e atalhos globais), instale também `pyautogui` e `pynput`.
 3.  **[Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/)**: Geralmente já incluído no Windows 11. Para Windows 10, pode ser necessário instalar manualmente.
 
 ### Instalação das Dependências
@@ -65,7 +65,7 @@ O cliente para Windows funciona como um "navegador dedicado" para a interface we
 Com o Python instalado, execute no PowerShell ou CMD:
 
 ```bash
-pip install pywebview requests
+pip install pywebview requests pyautogui pynput
 ```
 
 ### Execução
@@ -83,11 +83,11 @@ O aplicativo tentará se conectar a `http://pi.local:8080`. Se o servidor no Ras
 ## Solução de Problemas
 
 *   **O servidor não inicia ou o banco de dados não é criado:**
-    *   Verifique se o arquivo `SQL_File.sql` (ou um nome similar como `SQL_File`) está presente no diretório do projeto.
+    *   Verifique se um arquivo SQL de referência (como `SQL2.sql` ou `SQL_File.sql`) está presente no diretório do projeto. O servidor prioriza `SQL2.sql`.
     *   Certifique-se de que você tem permissão para criar arquivos no diretório onde o servidor está sendo executado.
-*   **Criação manual do banco de dados:** Se a criação automática falhar, você pode criar o banco manualmente com o seguinte comando:
+*   **Criação manual do banco de dados:** Se a criação automática falhar, você pode criar o banco manualmente com o seguinte comando (use o arquivo SQL mais recente):
     ```bash
-    sqlite3 automation.db < SQL_File.sql
+    sqlite3 automation.db < SQL2.sql
     ```
     Mova o arquivo `automation.db` gerado para o mesmo diretório do `ServidorCode2` e tente executá-lo novamente.
 *   **Cliente Windows não conecta:**
