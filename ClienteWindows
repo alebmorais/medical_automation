@@ -359,24 +359,24 @@ class WindowsDesktopClient:
         header_frame.pack_propagate(False)
 
         # Título
-        title_label = tk.Label(
+        self.title_label = tk.Label(
             header_frame,
             text="🏥 Automação Médica",
             bg=self.colors["bg_secondary"],
             fg=self.colors["text_primary"],
             font=("Segoe UI", int(20 * self.zoom_level), "bold"),
         )
-        title_label.pack(expand=True)
+        self.title_label.pack(expand=True)
 
         # Subtítulo
-        subtitle_label = tk.Label(
+        self.subtitle_label = tk.Label(
             header_frame,
             text="Neurologia",
             bg=self.colors["bg_secondary"],
             fg=self.colors["text_secondary"],
             font=("Segoe UI", int(12 * self.zoom_level)),
         )
-        subtitle_label.pack()
+        self.subtitle_label.pack()
 
     
 
@@ -572,9 +572,47 @@ class WindowsDesktopClient:
             js_code = f"document.body.style.zoom = '{self.zoom_level}'"
             self.webview_window.evaluate_js(js_code)
         elif self.ui_mode == "legacy":
-            messagebox.showinfo("Zoom", "O zoom na interface legado requer que o aplicativo seja reiniciado para aplicar as alterações de fonte. Esta funcionalidade ainda não está implementada.")
-            # TODO: Implementar recarregamento da UI Tkinter para aplicar zoom
-            pass
+            self._update_legacy_zoom()
+
+    def _update_legacy_zoom(self):
+        """Aplica o zoom na interface legada (Tkinter) atualizando as fontes."""
+        if not self.root:
+            return
+
+        # Atualizar estilos do ttk
+        style = ttk.Style()
+        style.configure("Dark.TLabel", font=("Segoe UI", int(10 * self.zoom_level)))
+        style.configure("Title.TLabel", font=("Segoe UI", int(16 * self.zoom_level), "bold"))
+        style.configure("Dark.TButton", font=("Segoe UI", int(10 * self.zoom_level), "bold"))
+
+        # Atualizar fontes de widgets específicos que não usam ttk Style
+        # Cabeçalho
+        self.title_label.config(font=("Segoe UI", int(20 * self.zoom_level), "bold"))
+        self.subtitle_label.config(font=("Segoe UI", int(12 * self.zoom_level)))
+
+        # Títulos das colunas
+        for col_frame in self.nav_frame.winfo_children():
+            if isinstance(col_frame, tk.Frame):
+                title_widget = col_frame.winfo_children()[0]
+                title_widget.config(font=("Segoe UI", int(12 * self.zoom_level), "bold"))
+
+        # Listboxes
+        self.categories_listbox.config(font=("Segoe UI", int(10 * self.zoom_level)))
+        self.subcategories_listbox.config(font=("Segoe UI", int(10 * self.zoom_level)))
+        self.phrases_listbox.config(font=("Segoe UI", int(10 * self.zoom_level)))
+
+        # Área de preview
+        self.preview_title.config(font=("Segoe UI", int(12 * self.zoom_level), "bold"))
+        self.preview_text.config(font=("Consolas", int(10 * self.zoom_level)))
+
+        # Botões de ação
+        self.type_button.config(font=("Segoe UI", int(11 * self.zoom_level), "bold"))
+        self.copy_button.config(font=("Segoe UI", int(11 * self.zoom_level), "bold"))
+
+        # Barra de status
+        self.status_bar.config(font=("Segoe UI", int(9 * self.zoom_level)))
+
+        self.update_status(f"Zoom aplicado: {self.zoom_level:.1f}x")
 
     def on_category_select(self, event):
         """Manipular seleção de categoria."""
