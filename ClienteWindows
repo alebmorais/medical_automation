@@ -77,6 +77,7 @@ class WindowsDesktopClient:
         self.pi_url = "http://pi.local:8080"
         
         self.current_phrase = None
+        self.zoom_level = 1.0
 
         # Dados
         self.categories = []
@@ -134,6 +135,9 @@ class WindowsDesktopClient:
             '<ctrl>+<alt>+d': on_type_activate,
             '<ctrl>+c': on_copy_activate,
             '<ctrl>+<alt>m': on_minimize_activate,
+            '<ctrl>+=': self.zoom_in,
+            '<ctrl>+-': self.zoom_out,
+            '<ctrl>+0': self.reset_zoom,
         }
 
         # Iniciar o listener em uma thread separada
@@ -199,19 +203,19 @@ class WindowsDesktopClient:
             "Dark.TLabel",
             background=self.colors["bg_primary"],
             foreground=self.colors["text_primary"],
-            font=("Segoe UI", 10),
+            font=("Segoe UI", int(10 * self.zoom_level)),
         )
         style.configure(
             "Title.TLabel",
             background=self.colors["bg_primary"],
             foreground=self.colors["text_primary"],
-            font=("Segoe UI", 16, "bold"),
+            font=("Segoe UI", int(16 * self.zoom_level), "bold"),
         )
         style.configure(
             "Dark.TButton",
             background=self.colors["bg_accent"],
             foreground=self.colors["text_primary"],
-            font=("Segoe UI", 10, "bold"),
+            font=("Segoe UI", int(10 * self.zoom_level), "bold"),
         )
 
         self.create_header()
@@ -360,7 +364,7 @@ class WindowsDesktopClient:
             text="🏥 Automação Médica",
             bg=self.colors["bg_secondary"],
             fg=self.colors["text_primary"],
-            font=("Segoe UI", 20, "bold"),
+            font=("Segoe UI", int(20 * self.zoom_level), "bold"),
         )
         title_label.pack(expand=True)
 
@@ -370,7 +374,7 @@ class WindowsDesktopClient:
             text="Neurologia",
             bg=self.colors["bg_secondary"],
             fg=self.colors["text_secondary"],
-            font=("Segoe UI", 12),
+            font=("Segoe UI", int(12 * self.zoom_level)),
         )
         subtitle_label.pack()
 
@@ -410,7 +414,7 @@ class WindowsDesktopClient:
             text=title,
             bg=self.colors["bg_accent"],
             fg=self.colors["text_primary"],
-            font=("Segoe UI", 12, "bold"),
+            font=("Segoe UI", int(12 * self.zoom_level), "bold"),
             pady=10,
         )
         title_label.pack(fill=tk.X)
@@ -425,7 +429,7 @@ class WindowsDesktopClient:
             fg=self.colors["text_primary"],
             selectbackground=self.colors["bg_accent"],
             selectforeground=self.colors["text_primary"],
-            font=("Segoe UI", 10),
+            font=("Segoe UI", int(10 * self.zoom_level)),
             relief="flat",
             bd=0,
         )
@@ -461,7 +465,7 @@ class WindowsDesktopClient:
             text="👁️ Preview da Frase Selecionada",
             bg=self.colors["bg_secondary"],
             fg=self.colors["text_primary"],
-            font=("Segoe UI", 12, "bold"),
+            font=("Segoe UI", int(12 * self.zoom_level), "bold"),
             pady=5,
         )
         preview_title.pack()
@@ -476,7 +480,7 @@ class WindowsDesktopClient:
             wrap=tk.WORD,
             bg=self.colors["bg_primary"],
             fg=self.colors["text_primary"],
-            font=("Consolas", 10),
+            font=("Consolas", int(10 * self.zoom_level)),
             relief="flat",
             bd=0,
             state="disabled",
@@ -499,7 +503,7 @@ class WindowsDesktopClient:
             text="⌨️ Digitar Automaticamente (F5)",
             bg=self.colors["button_active"],
             fg=self.colors["text_primary"],
-            font=("Segoe UI", 11, "bold"),
+            font=("Segoe UI", int(11 * self.zoom_level), "bold"),
             command=self.auto_type_phrase,
             relief="raised",
             bd=2,
@@ -514,7 +518,7 @@ class WindowsDesktopClient:
             text="📋 Copiar para Clipboard",
             bg=self.colors["bg_accent"],
             fg=self.colors["text_primary"],
-            font=("Segoe UI", 11, "bold"),
+            font=("Segoe UI", int(11 * self.zoom_level), "bold"),
             command=self.copy_phrase,
             relief="raised",
             bd=2,
@@ -530,7 +534,7 @@ class WindowsDesktopClient:
             text="Pronto - Conecte-se ao Pi Zero",
             bg=self.colors["bg_accent"],
             fg=self.colors["text_primary"],
-            font=("Segoe UI", 9),
+            font=("Segoe UI", int(9 * self.zoom_level)),
             relief="sunken",
             bd=1,
             anchor="w",
@@ -543,6 +547,34 @@ class WindowsDesktopClient:
         if self.ui_mode == "legacy" and self.status_bar:
             self.status_bar.config(text=message)
         print(f"Status atualizado: {message}")
+
+    def zoom_in(self):
+        """Aumenta o zoom da interface."""
+        self.zoom_level = min(2.0, self.zoom_level + 0.1)
+        self.apply_zoom()
+        print(f"Zoom in: {self.zoom_level:.1f}")
+
+    def zoom_out(self):
+        """Diminui o zoom da interface."""
+        self.zoom_level = max(0.5, self.zoom_level - 0.1)
+        self.apply_zoom()
+        print(f"Zoom out: {self.zoom_level:.1f}")
+
+    def reset_zoom(self):
+        """Reseta o zoom para o padrão."""
+        self.zoom_level = 1.0
+        self.apply_zoom()
+        print("Zoom resetado")
+
+    def apply_zoom(self):
+        """Aplica o nível de zoom à interface atual."""
+        if self.ui_mode == "webview" and self.webview_window:
+            js_code = f"document.body.style.zoom = '{self.zoom_level}'"
+            self.webview_window.evaluate_js(js_code)
+        elif self.ui_mode == "legacy":
+            messagebox.showinfo("Zoom", "O zoom na interface legado requer que o aplicativo seja reiniciado para aplicar as alterações de fonte. Esta funcionalidade ainda não está implementada.")
+            # TODO: Implementar recarregamento da UI Tkinter para aplicar zoom
+            pass
 
     def on_category_select(self, event):
         """Manipular seleção de categoria."""
