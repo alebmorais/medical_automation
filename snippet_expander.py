@@ -83,12 +83,16 @@ class PhraseSelector(tk.Toplevel):
             self.phrase_list.insert(tk.END, "No matching phrases found.")
             return
 
+        # Sort phrases by subcategory and then by order
+        filtered_phrases.sort(key=lambda p: (p.get('subcategoria', ''), p.get('ordem', 0)))
+
         last_subcategory = None
         for p in filtered_phrases:
             # Add a subcategory header if it changes
             subcategory = p.get('subcategoria', 'Uncategorized')
             if subcategory != last_subcategory:
                 self.phrase_list.insert(tk.END, f"--- {subcategory} ---")
+                self.phrase_list.itemconfig(tk.END, {'fg': 'grey'}) # Make header distinct
                 last_subcategory = subcategory
             
             self.phrase_list.insert(tk.END, f"  {p.get('nome', 'Unnamed Phrase')}")
@@ -103,16 +107,16 @@ class PhraseSelector(tk.Toplevel):
         
         selected_text = self.phrase_list.get(selected_indices[0]).strip()
 
+        # If a header was clicked, do nothing
+        if selected_text.startswith("---"):
+            return
+
         # Find the corresponding phrase object to get the full content
         for p in self.phrases:
             if p.get('nome', 'Unnamed Phrase') == selected_text:
                 self.selected_phrase = p.get('conteudo')
                 self.destroy()
                 return
-        
-        # If a header was clicked, do nothing
-        if selected_text.startswith("---"):
-            return
 
     def cancel(self):
         self.selected_phrase = None
@@ -132,7 +136,8 @@ class SnippetExpander:
     def sync_from_server(self):
         """Fetch snippets from the server and update local cache."""
         try:
-            response = requests.get(f"{SERVER_URL}/snippets")
+            url = urljoin(SERVER_URL, "snippets")
+            response = requests.get(url)
             response.raise_for_status()
             self.snippets = response.json()
             with open(CACHE_FILE, 'w') as f:

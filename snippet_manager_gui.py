@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import messagebox, simpledialog
 import requests
 import json
-from urllib.parse import quote, urljoin
+from urllib.parse import urljoin, quote
 
 SERVER_URL = "http://192.168.0.34:5000"
 MEDICAL_SERVER_URL = "http://192.168.0.34:8080"
@@ -76,7 +76,8 @@ Available Template Variables:
     def load_snippets(self):
         """Load snippets from the server and populate the listbox."""
         try:
-            response = requests.get(f"{SERVER_URL}/snippets/all")
+            url = urljoin(SERVER_URL, "snippets/all")
+            response = requests.get(url)
             response.raise_for_status()
             data = response.json()
             if not isinstance(data, list):
@@ -87,7 +88,7 @@ Available Template Variables:
             for snippet in self.snippets:
                 abbr = snippet.get('abbreviation', '')
                 phrase = snippet.get('phrase', '')
-                self.listbox.insert(tk.END, f"{abbr:<20} -> {phrase}")
+                self.listbox.insert(tk.END, f"{abbr:<25} -> {phrase}")
         except (requests.RequestException, ValueError, KeyError) as e:
             messagebox.showerror("Error", f"Could not load snippets: {e}")
 
@@ -100,22 +101,22 @@ Available Template Variables:
         if not phrase: return
 
         try:
-            requests.post(f"{SERVER_URL}/snippets", json={"abbreviation": abbr, "phrase": phrase}).raise_for_status()
+            url = urljoin(SERVER_URL, "snippets")
+            requests.post(url, json={"abbreviation": abbr, "phrase": phrase}).raise_for_status()
             self.load_snippets()
         except requests.RequestException as e:
             messagebox.showerror("Error", f"Failed to add snippet: {e}")
 
     def add_phrase_selector(self):
         """Show dialog to add a new phrase selector snippet."""
-        abbr = simpledialog.askstring("Add Selector", "Enter abbreviation (e.g., '//anam'):")
+        abbr = simpledialog.askstring("Add Selector", "Enter abbreviation (e.g., '//crise'):")
         if not abbr: return
         
         # Fetch categories to show as options
         try:
-            # Corrected URL to use /api/ and urljoin
-            response = requests.get(urljoin(MEDICAL_SERVER_URL, "api/categories"))
+            url = urljoin(MEDICAL_SERVER_URL, "api/categorias")
+            response = requests.get(url)
             response.raise_for_status()
-            # The server returns a simple list of strings, so no need to parse objects.
             categories = response.json()
             if not isinstance(categories, list):
                 raise ValueError("Server did not return a list of categories.")
@@ -127,11 +128,12 @@ Available Template Variables:
         cat_name = self.ask_category("Select Category", f"Choose a category for '{abbr}':", categories)
         if not cat_name: return
 
-        phrase = f"{{{{SELECT_PHRASE:{cat_name}}}}}"
+        # Use the new, more powerful SEARCH_PHRASES syntax
+        phrase = f"{{{{SEARCH_PHRASES:{cat_name}}}}}"
 
         try:
-            # Use urljoin for safety
-            requests.post(urljoin(SERVER_URL, "snippets"), json={"abbreviation": abbr, "phrase": phrase}).raise_for_status()
+            url = urljoin(SERVER_URL, "snippets")
+            requests.post(url, json={"abbreviation": abbr, "phrase": phrase}).raise_for_status()
             self.load_snippets()
         except requests.RequestException as e:
             messagebox.showerror("Error", f"Failed to add snippet: {e}")
@@ -153,9 +155,9 @@ Available Template Variables:
         if not new_phrase: return
 
         try:
-            # URL-encode the abbreviation to handle special characters like '/'
             encoded_abbr = quote(snippet['abbreviation'], safe='')
-            requests.put(f"{SERVER_URL}/snippets/{encoded_abbr}", json={"phrase": new_phrase}).raise_for_status()
+            url = urljoin(SERVER_URL, f"snippets/{encoded_abbr}")
+            requests.put(url, json={"phrase": new_phrase}).raise_for_status()
             self.load_snippets()
         except requests.RequestException as e:
             messagebox.showerror("Error", f"Failed to edit snippet: {e}")
@@ -167,9 +169,9 @@ Available Template Variables:
 
         if messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete '{snippet['abbreviation']}'?"):
             try:
-                # URL-encode the abbreviation to handle special characters like '/'
                 encoded_abbr = quote(snippet['abbreviation'], safe='')
-                requests.delete(f"{SERVER_URL}/snippets/{encoded_abbr}").raise_for_status()
+                url = urljoin(SERVER_URL, f"snippets/{encoded_abbr}")
+                requests.delete(url).raise_for_status()
                 self.load_snippets()
             except requests.RequestException as e:
                 messagebox.showerror("Error", f"Failed to delete snippet: {e}")

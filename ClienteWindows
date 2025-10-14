@@ -9,10 +9,11 @@ import tkinter as tk
 import traceback
 from tkinter import ttk
 from urllib import request as urllib_request
+import urllib.parse
 
 # Função utilitária para lidar com pausas...
 def pause_for_user(prompt, delay_seconds=3):
-    """Exibe uma mensagem de pausa sem exigir entrada quando stdin não existe."""
+    """Exibe uma mensagem de pausa não exigida pelo usuário."""
     try:
         if sys.stdin and sys.stdin.isatty():
             input(prompt)
@@ -621,7 +622,8 @@ class WindowsDesktopClient:
         if not selected:
             return
         index = selected[0]
-        self.selected_category = self.categories[index]
+        # The API returns a simple list of strings.
+        self.selected_category = self.categories_listbox.get(index)
         self.load_subcategories()
 
     def on_subcategory_select(self, event):
@@ -630,16 +632,20 @@ class WindowsDesktopClient:
         if not selected:
             return
         index = selected[0]
-        self.selected_subcategory = self.subcategories[index]
+        # The API returns a simple list of strings.
+        self.selected_subcategory = self.subcategories_listbox.get(index)
         self.load_phrases()
 
     def on_phrase_select(self, event):
         """Manipular seleção de frase."""
-        selected = self.phrases_listbox.curselection()
-        if not selected:
+        selected_indices = self.phrases_listbox.curselection()
+        if not selected_indices:
             return
-        index = selected[0]
-        self.current_phrase = self.phrases[index]
+        
+        # Find the full phrase object that matches the selected name
+        selected_name = self.phrases_listbox.get(selected_indices[0])
+        self.current_phrase = next((p for p in self.phrases if p.get("nome") == selected_name), None)
+        
         self.show_preview()
 
     def load_categories(self):

@@ -328,56 +328,37 @@ class WebRequestHandler(BaseHTTPRequestHandler):
         """Processar requisicoes GET"""
         try:
             parsed_url = urllib.parse.urlparse(self.path)
-            path = parsed_url.path or '/'
+            path = parsed_url.path
 
-            if path == '/':
-                self.send_medical_interface()
-                return
-
-            stripped_path = path.strip('/')
-            path_parts = stripped_path.split('/') if stripped_path else []
-
-            if path == '/api/categorias':
-                categorias = self.automation_server.get_categorias_principais()
-                self.send_json_response(categorias)
-                return
-
-            if len(path_parts) >= 2 and path_parts[0] == 'api' and path_parts[1] == 'subcategorias':
-                if len(path_parts) == 2:
-                    self.send_error(400, "Categoria não especificada")
+            # API routes
+            if path.startswith('/api/'):
+                path_parts = path.strip('/').split('/')
+                
+                if len(path_parts) == 2 and path_parts[1] == 'categorias':
+                    categorias = self.automation_server.get_categorias_principais()
+                    self.send_json_response(categorias)
                     return
 
-                categoria = urllib.parse.unquote('/'.join(path_parts[2:]))
-                if not categoria:
-                    self.send_error(400, "Categoria não especificada")
+                if len(path_parts) >= 3 and path_parts[1] == 'subcategorias':
+                    categoria = urllib.parse.unquote('/'.join(path_parts[2:]))
+                    if not categoria:
+                        self.send_error(400, "Categoria não especificada")
+                        return
+                    subcategorias = self.automation_server.get_subcategorias(categoria)
+                    self.send_json_response(subcategorias)
                     return
 
-                subcategorias = self.automation_server.get_subcategorias(categoria)
-                self.send_json_response(subcategorias)
-                return
-
-            if len(path_parts) >= 2 and path_parts[0] == 'api' and path_parts[1] == 'frases':
-                if len(path_parts) == 2:
+                if len(path_parts) >= 2 and path_parts[1] == 'frases':
                     query_params = urllib.parse.parse_qs(parsed_url.query)
-                    categoria = query_params.get('categoria', [None])[0] or None
-                    subcategoria = query_params.get('subcategoria', [None])[0] or None
+                    categoria = query_params.get('categoria', [None])[0]
+                    subcategoria = query_params.get('subcategoria', [None])[0]
                     frases = self.automation_server.get_frases(categoria, subcategoria)
                     self.send_json_response(frases)
                     return
 
-                categoria = urllib.parse.unquote(path_parts[2]) if len(path_parts) >= 3 else None
-                subcategoria = urllib.parse.unquote(path_parts[3]) if len(path_parts) >= 4 else None
-
-                if categoria in (None, ''):
-                    self.send_error(400, "Categoria não especificada")
-                    return
-
-                if len(path_parts) >= 4 and subcategoria == '':
-                    self.send_error(400, "Subcategoria não especificada")
-                    return
-
-                frases = self.automation_server.get_frases(categoria, subcategoria)
-                self.send_json_response(frases)
+            # Root path for HTML interface
+            if path == '/':
+                self.send_medical_interface()
                 return
 
             self.send_error(404, "Página não encontrada")
