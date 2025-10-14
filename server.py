@@ -82,7 +82,7 @@ def create_snippet():
         conn.close()
     return jsonify({"message": "Snippet created successfully"}), 201
 
-@snippet_app.route('/snippets/<string:abbreviation>', methods=['PUT'])
+@snippet_app.route('/snippets/<path:abbreviation>', methods=['PUT'])
 def update_snippet(abbreviation):
     """Update an existing snippet."""
     data = request.get_json()
@@ -95,7 +95,7 @@ def update_snippet(abbreviation):
     conn.close()
     return jsonify({"message": "Snippet updated successfully"})
 
-@snippet_app.route('/snippets/<string:abbreviation>', methods=['DELETE'])
+@snippet_app.route('/snippets/<path:abbreviation>', methods=['DELETE'])
 def delete_snippet(abbreviation):
     """Delete a snippet."""
     conn = get_snippet_db_connection()

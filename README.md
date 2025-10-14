@@ -19,11 +19,11 @@ The server component runs on a Raspberry Pi or any Linux machine on your network
 - Network connectivity between the server and client machines.
 
 ### Step 1: Copy Project Files to Server
-Copy the necessary server files to a directory on your Raspberry Pi.
+Copy the necessary server files to a directory on your Raspberry Pi. This includes the server script, requirements, and the SQL data files.
 
 ```bash
-# Example using scp from your local machine to copy the server script and its requirements
-scp server.py server_requirements.txt pi@<raspberry_pi_ip>:/home/pi/medical_automation/
+# Example using scp from your local machine
+scp server.py server_requirements.txt SQL2.sql snippets_data.sql pi@<raspberry_pi_ip>:/home/pi/medical_automation/
 ```
 
 ### Step 2: Set Up Python Virtual Environment
@@ -53,19 +53,34 @@ With the virtual environment active, install the required packages from `server_
 pip install -r server_requirements.txt
 ```
 
-### Step 4: Create a Systemd Service
-To ensure the snippet server runs automatically on boot using the virtual environment, we will create a `systemd` service.
+### Step 4: Populate Databases
+The server uses two separate databases.
+
+1.  **Medical Phrases Database (`automation.db`)**:
+    This database is created and populated automatically from `SQL2.sql` the first time the server runs. No manual action is needed for this part, as long as `SQL2.sql` was copied to the server.
+
+2.  **Snippets Database (`snippets.db`)**:
+    This database contains the text expansion snippets. After the server runs for the first time (which creates the empty database file), you must populate it using the `snippets_data.sql` script.
+
+    Run the following command on your Raspberry Pi:
+    ```bash
+    sqlite3 /home/pi/medical_automation/snippets.db < /home/pi/medical_automation/snippets_data.sql
+    ```
+    This command will delete any existing snippets and populate the table with a fresh set from your SQL file.
+
+### Step 5: Create a Systemd Service
+To ensure the unified server runs automatically on boot, we will create a `systemd` service.
 
 1.  Create a new service file:
     ```bash
-    sudo nano /etc/systemd/system/snippet-server.service
+    sudo nano /etc/systemd/system/medical-server.service
     ```
 
-2.  Add the following content. Note that `ExecStart` now points to the Python executable **inside the virtual environment**.
+2.  Add the following content. Note that `ExecStart` now points to the `server.py` script.
 
     ```ini
     [Unit]
-    Description=Snippet Expansion Server
+    Description=Medical Automation Unified Server
     After=network.target
 
     [Service]
@@ -79,22 +94,22 @@ To ensure the snippet server runs automatically on boot using the virtual enviro
     WantedBy=multi-user.target
     ```
 
-### Step 5: Enable and Start the Service
+### Step 6: Enable and Start the Service
 1.  Reload the systemd daemon to recognize the new service:
     ```bash
     sudo systemctl daemon-reload
     ```
 2.  Enable the service to start on boot:
     ```bash
-    sudo systemctl enable snippet-server.service
+    sudo systemctl enable medical-server.service
     ```
 3.  Start the service immediately:
     ```bash
-    sudo systemctl start snippet-server.service
+    sudo systemctl start medical-server.service
     ```
 4.  Check the status to ensure it's running without errors:
     ```bash
-    sudo systemctl status snippet-server.service
+    sudo systemctl status medical-server.service
     ```
 
 ## 2. Client Deployment (Windows)
