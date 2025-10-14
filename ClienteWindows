@@ -344,8 +344,10 @@ class WindowsDesktopClient:
                 response = requests.get(self.pi_url, timeout=timeout)
                 return response.status_code < 500
             with urllib_request.urlopen(self.pi_url, timeout=timeout) as response:
-                return 200 <= getattr(response, "status", 200) < 500
-            return False
+                # http.client.HTTPResponse object has 'status' in Python 3.9+
+                # but 'getcode()' is a more compatible way to get it.
+                status = response.getcode() if hasattr(response, 'getcode') else getattr(response, "status", 200)
+                return 200 <= status < 500
         except Exception as e:
             print(f"Falha ao verificar a disponibilidade do Pi: {e}")
             traceback.print_exc()
