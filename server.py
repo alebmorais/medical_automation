@@ -1203,7 +1203,8 @@ def run_snippet_server():
     init_snippet_db()
     print(f"✓ Servidor de snippets rodando em http://localhost:5000")
     # Note: Flask's development server is not for production, but is fine for this use case.
-    snippet_app.run(host='0.0.0.0', port=5000)
+    # threaded=True helps handle simultaneous requests more gracefully.
+    snippet_app.run(host='0.0.0.0', port=5000, threaded=True)
 
 def run_all_servers():
     db_path = os.environ.get('AUTOMATION_DB_PATH') or os.environ.get('DB_PATH')
