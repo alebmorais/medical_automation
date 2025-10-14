@@ -648,8 +648,10 @@ class WindowsDesktopClient:
             self.update_status("Erro: A biblioteca 'requests' é necessária para carregar dados.")
             return
         try:
-            response = requests.get(f"{self.pi_url}/categories")
+            # Corrected URL to use the /api/ prefix
+            response = requests.get(f"{self.pi_url}/api/categorias")
             response.raise_for_status()
+            # The server returns a simple list of strings
             self.categories = response.json()
             self.update_categories_listbox()
             self.update_status("Categorias carregadas.")
@@ -663,7 +665,8 @@ class WindowsDesktopClient:
             return
         self.categories_listbox.delete(0, tk.END)
         for category in self.categories:
-            self.categories_listbox.insert(tk.END, category["name"])
+            # The API returns a list of strings, not objects
+            self.categories_listbox.insert(tk.END, category)
 
     def load_subcategories(self):
         """Carregar subcategorias da API e atualizar a lista."""
@@ -673,8 +676,10 @@ class WindowsDesktopClient:
             self.update_status("Erro: A biblioteca 'requests' é necessária para carregar dados.")
             return
         try:
+            # Corrected URL to use the /api/ prefix and proper encoding
+            encoded_category = urllib.parse.quote(self.selected_category)
             response = requests.get(
-                f"{self.pi_url}/subcategories/{self.selected_category['id']}"
+                f"{self.pi_url}/api/subcategorias/{encoded_category}"
             )
             response.raise_for_status()
             self.subcategories = response.json()
@@ -690,7 +695,8 @@ class WindowsDesktopClient:
             return
         self.subcategories_listbox.delete(0, tk.END)
         for subcategory in self.subcategories:
-            self.subcategories_listbox.insert(tk.END, subcategory["name"])
+            # The API returns a list of strings, not objects
+            self.subcategories_listbox.insert(tk.END, subcategory)
 
     def load_phrases(self):
         """Carregar frases da API e atualizar a lista."""
@@ -700,9 +706,12 @@ class WindowsDesktopClient:
             self.update_status("Erro: A biblioteca 'requests' é necessária para carregar dados.")
             return
         try:
-            response = requests.get(
-                f"{self.pi_url}/phrases/{self.selected_subcategory['id']}"
-            )
+            # Corrected to use query parameters as the API expects
+            params = {
+                'categoria': self.selected_category,
+                'subcategoria': self.selected_subcategory
+            }
+            response = requests.get(f"{self.pi_url}/api/frases", params=params)
             response.raise_for_status()
             self.phrases = response.json()
             self.update_phrases_listbox()
@@ -717,7 +726,8 @@ class WindowsDesktopClient:
             return
         self.phrases_listbox.delete(0, tk.END)
         for phrase in self.phrases:
-            self.phrases_listbox.insert(tk.END, phrase["text"])
+            # The API returns objects with 'nome' and 'conteudo'
+            self.phrases_listbox.insert(tk.END, phrase.get("nome", "Frase sem nome"))
 
     def show_preview(self):
         """Exibir a frase selecionada na área de preview."""
@@ -725,7 +735,8 @@ class WindowsDesktopClient:
             return
         self.preview_text.config(state="normal")
         self.preview_text.delete(1.0, tk.END)
-        self.preview_text.insert(tk.END, self.current_phrase["text"])
+        # The phrase object has the full text in the 'conteudo' key
+        self.preview_text.insert(tk.END, self.current_phrase.get("conteudo", ""))
         self.preview_text.config(state="disabled")
 
     def auto_type_phrase(self):
@@ -737,7 +748,8 @@ class WindowsDesktopClient:
             return
 
         self.update_status("Digitando frase...")
-        text = self.current_phrase["text"]
+        # The phrase object has the full text in the 'conteudo' key
+        text = self.current_phrase.get("conteudo", "")
         delay = 0.1  # Atraso entre as teclas (em segundos)
 
         # Usar pyautogui para digitar a frase
@@ -757,7 +769,8 @@ class WindowsDesktopClient:
             return
         try:
             # Usar clipboard padrão do sistema
-            pyperclip.copy(self.current_phrase["text"])
+            # The phrase object has the full text in the 'conteudo' key
+            pyperclip.copy(self.current_phrase.get("conteudo", ""))
             self.update_status("Frase copiada para o clipboard.")
         except Exception as e:
             self.update_status(f"Erro ao copiar frase: {e}")
