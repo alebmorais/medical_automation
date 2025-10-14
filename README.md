@@ -241,4 +241,83 @@ If the server is running and listening correctly, a firewall might be blocking t
     ```
     This command opens the port for incoming TCP connections.
 
+### Service is Active but Not Listening on Port
+
+You may encounter a situation where `systemctl status` shows the service is `active (running)`, but `netstat -tulpn` shows nothing listening on the expected port. This usually means the Python script started but failed internally before the web server could launch.
+
+To diagnose this, you need to view the detailed logs from your service.
+
+#### Step 1: View the Service Logs
+
+Use the `journalctl` command to see the full output from your service, including any Python error messages.
+
+```bash
+# View the last 100 log entries for the service
+journalctl -u snippet-server.service -n 100 --no-pager
+```
+
+Look for a `Traceback` (Python error) in the output. This will tell you exactly what went wrong inside the `server.py` script.
+
+#### Step 2: Common Causes and Solutions
+
+-   **Database Errors**: The script might be failing to connect to or initialize the `snippets.db` database. Ensure the `snippets.db` file and the directory containing it are owned by the `pi` user and have the correct permissions.
+    ```bash
+    # To fix permissions in your project directory
+    sudo chown -R pi:pi /home/pi/medical_automation
+    ```
+
+-   **Syntax Errors**: A simple typo in `server.py` can cause it to fail on startup. The `journalctl` log will show the exact line number of the error.
+
+-   **Dependency Issues**: If a required package (like `Flask`) was not installed correctly in the virtual environment, the script will fail. The log will show an `ImportError`.
+
+After fixing the issue found in the logs, restart the service to apply the changes:
+```bash
+sudo systemctl restart snippet-server.service
+```
+
+### "Address already in use" Error
+
+If you see an error like `OSError: [Errno 98] Address already in use` when starting a server, it means another process is already using the port (e.g., 5000 or 8080). This often happens if a previous server instance did not shut down correctly.
+
+#### Step 1: Find the Process Using the Port
+
+Use the `lsof` (list open files) command to find the Process ID (PID) that is occupying the port. Replace `<port_number>` with the port from the error message (e.g., `5000`).
+
+```bash
+# Example for port 5000
+sudo lsof -i :5000
+```
+
+This command will show you a list of processes. Look for the one with a state of `LISTEN` and note its `PID`.
+
+#### Step 2: Stop the Process
+
+Once you have the PID, you can stop the process using the `kill` command.
+
+```bash
+# Replace <PID> with the process ID you found
+kill <PID>
+```
+
+If the process does not stop, you can force it to stop with `kill -9`:
+
+```bash
+kill -9 <PID>
+```
+
+#### Step 3: Check for a Running Service
+
+If you configured the server to run as a `systemd` service, that service might be the one holding the port. In that case, you should manage it with `systemctl`.
+
+```bash
+# Stop the service if it's running
+sudo systemctl stop snippet-server.service
+
+# Then try running your script manually for testing
+source venv/bin/activate
+python server.py
+```
+
+After stopping the conflicting process, you should be able to start your server script without the "Address already in use" error.
+
 
