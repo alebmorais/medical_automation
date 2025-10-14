@@ -184,4 +184,61 @@ For easier daily use, you can package the Python scripts into standalone `.exe` 
 3.  **Find the Executables**:
     The `.exe` files will be located in the `dist` folder inside your project directory. You can create shortcuts to these files on your Desktop or Start Menu for easy access. Remember to run the `snippet_expander.exe` **as Administrator**.
 
+## 3. Troubleshooting
+
+### "Connection Refused" Error
+
+If you see an error like `ConnectionRefusedError` or `target machine actively refused it`, it means the server is not responding. Follow these steps on your **Raspberry Pi** to diagnose the issue.
+
+#### Step 1: Check if the Server Service is Running
+
+Use `systemctl` to check the status of the service you created.
+
+```bash
+sudo systemctl status snippet-server.service
+```
+
+-   If the status is `active (running)`, the server is running. Proceed to Step 2.
+-   If the status is `inactive (dead)` or `failed`, the service is not running. Try restarting it:
+    ```bash
+    sudo systemctl restart snippet-server.service
+    ```
+    If it fails again, check the logs for errors:
+    ```bash
+    journalctl -u snippet-server.service -n 50 --no-pager
+    ```
+    This will show the last 50 log entries, which usually contain the reason for the failure.
+
+#### Step 2: Check if the Server is Listening on the Network
+
+The server must listen on `0.0.0.0` to be accessible from other devices, not `127.0.0.1` (localhost).
+
+1.  Use the `netstat` command to see which ports are open:
+    ```bash
+    sudo netstat -tulpn | grep 5000
+    ```
+
+2.  **Analyze the output:**
+    -   **Correct:** `tcp        0      0 0.0.0.0:5000            0.0.0.0:*               LISTEN      ...`
+        This means the server is correctly listening on all network interfaces.
+    -   **Incorrect:** `tcp        0      0 127.0.0.1:5000          0.0.0.0:*               LISTEN      ...`
+        This means the server is only listening for local connections. Ensure `server.py` contains `app.run(host='0.0.0.0', port=5000)`.
+    -   **No Output:** If you see no output, the server application is not running on port 5000. Go back to Step 1.
+
+#### Step 3: Check the Firewall
+
+If the server is running and listening correctly, a firewall might be blocking the connection.
+
+1.  Check the status of the Uncomplicated Firewall (`ufw`):
+    ```bash
+    sudo ufw status
+    ```
+
+2.  **If the status is `active`**, you must explicitly allow traffic on port 5000:
+    ```bash
+    sudo ufw allow 5000/tcp
+    sudo ufw reload
+    ```
+    This command opens the port for incoming TCP connections.
+
 

@@ -9,8 +9,8 @@ import pyperclip
 import tkinter as tk
 from tkinter import ttk
 
-SERVER_URL = "http://pi.local:5000"  # Snippet server
-MEDICAL_SERVER_URL = "http://pi.local:8080" # Medical phrases server
+SERVER_URL = "http://192.168.0.34:5000"  # Corrected from http:/
+MEDICAL_SERVER_URL = "http://192.168.0.34:8080" # Corrected from http:/
 CACHE_FILE = "snippets_cache.json"
 
 class PhraseSelector(tk.Toplevel):

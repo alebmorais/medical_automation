@@ -3,8 +3,8 @@ from tkinter import messagebox, simpledialog
 import requests
 import json
 
-SERVER_URL = "http://pi.local:5000"  # Change to your Pi's IP if needed
-MEDICAL_SERVER_URL = "http://pi.local:8080" # Medical phrases server
+SERVER_URL = "http://192.168.0.34:5000"  # Corrected from http:/
+MEDICAL_SERVER_URL = "http://192.168.0.34:8080" # Corrected from http:/
 
 class SnippetManager(tk.Tk):
     def __init__(self):

@@ -73,7 +73,7 @@ class WindowsDesktopClient:
             return
 
         # Configurações
-        self.pi_url = "http://pi.local:8080"
+        self.pi_url = "http://192.168.0.34:8080" # Corrected from http:/
         
         self.current_phrase = None
         self.zoom_level = 1.0
