@@ -3,6 +3,7 @@
 # Interface nativa com fundo azul escuro, navegação por voz, atalhos e cliques
 # Detecta automaticamente se está no Windows e só ativa neste sistema
 import platform
+import sys
 import time
 import tkinter as tk
 import traceback
@@ -11,15 +12,19 @@ from urllib import request as urllib_request
 
 # Função utilitária para lidar com pausas...
 def pause_for_user(prompt, delay_seconds=3):
-    """Exibe uma mensagem de pausa não exigindo entrada quando stdin não existe."""
+    """Exibe uma mensagem de pausa sem exigir entrada quando stdin não existe."""
     try:
-        input(prompt)
+        if sys.stdin and sys.stdin.isatty():
+            input(prompt)
+            return
     except (EOFError, RuntimeError):
-        # Ambiente não interativo: apenas informar e aguardar brevemente para que
-        # o usuário leia a mensagem.
-        message = prompt.strip() or "Pressione Enter para continuar..."
-        print(message)
-        time.sleep(max(delay_seconds, 0))
+        pass
+
+    # Ambiente não interativo: apenas informar e aguardar brevemente para que
+    # o usuário leia a mensagem.
+    message = prompt.strip() or "Pressione Enter para continuar..."
+    print(message)
+    time.sleep(max(delay_seconds, 0))
 
 # Tentar importar bibliotecas opcionais
 try:
