@@ -37,6 +37,13 @@ except ImportError:
     pyautogui = None # Define as None if it fails to import
 
 try:
+    import pyperclip
+    PYPERCLIP_AVAILABLE = True
+except ImportError:
+    PYPERCLIP_AVAILABLE = False
+    pyperclip = None
+
+try:
     import webview
     WEBVIEW_AVAILABLE = True
 except ImportError:
@@ -718,14 +725,16 @@ class WindowsDesktopClient:
         """Digitar a frase selecionada automaticamente."""
         if not self.current_phrase:
             return
+        if not AUTOGUI_AVAILABLE:
+            self.update_status("Erro: A biblioteca 'pyautogui' é necessária para digitar.")
+            return
+
         self.update_status("Digitando frase...")
         text = self.current_phrase["text"]
         delay = 0.1  # Atraso entre as teclas (em segundos)
 
         # Usar pyautogui para digitar a frase
         try:
-            import pyautogui
-
             pyautogui.write(text, interval=delay)
             self.update_status("Frase digitada.")
         except Exception as e:
@@ -736,10 +745,11 @@ class WindowsDesktopClient:
         """Copiar a frase selecionada para o clipboard."""
         if not self.current_phrase:
             return
+        if not PYPERCLIP_AVAILABLE:
+            self.update_status("Erro: A biblioteca 'pyperclip' é necessária para copiar.")
+            return
         try:
             # Usar clipboard padrão do sistema
-            import pyperclip
-
             pyperclip.copy(self.current_phrase["text"])
             self.update_status("Frase copiada para o clipboard.")
         except Exception as e:

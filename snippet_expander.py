@@ -161,20 +161,8 @@ class SnippetExpander:
         """Delete the abbreviation and type the expansion."""
         # Check for special selector syntax
         if expansion.startswith("{{SELECT_PHRASE:") and expansion.endswith("}}"):
-            category_name = expansion.replace("{{SELECT_PHRASE:", "").replace("}}", "")
-            
-            # First, delete the typed abbreviation
-            for _ in range(len(abbr) + 1):
-                self.kb_controller.press(keyboard.Key.backspace)
-                self.kb_controller.release(keyboard.Key.backspace)
-            
-            # Show selector dialog
-            selector = PhraseSelector(self.root, category_name, self.kb_controller)
-            self.root.wait_window(selector) # Wait for it to close
-            
-            if selector.selected_phrase:
-                self.kb_controller.type(selector.selected_phrase)
-            self.buffer = ""
+            # Schedule the GUI to run in the main thread
+            self.root.after(0, self.show_phrase_selector, abbr, expansion)
             return
 
         # Delete abbreviation plus the commit character (space/tab/enter)
@@ -185,6 +173,23 @@ class SnippetExpander:
         # Type expansion
         processed_text = self.process_template(expansion)
         self.kb_controller.type(processed_text)
+        self.buffer = ""
+
+    def show_phrase_selector(self, abbr, expansion):
+        """Creates and shows the phrase selector dialog."""
+        category_name = expansion.replace("{{SELECT_PHRASE:", "").replace("}}", "")
+        
+        # First, delete the typed abbreviation
+        for _ in range(len(abbr) + 1):
+            self.kb_controller.press(keyboard.Key.backspace)
+            self.kb_controller.release(keyboard.Key.backspace)
+        
+        # Show selector dialog
+        selector = PhraseSelector(self.root, category_name, self.kb_controller)
+        self.root.wait_window(selector) # Wait for it to close
+        
+        if selector.selected_phrase:
+            self.kb_controller.type(selector.selected_phrase)
         self.buffer = ""
 
     def on_press(self, key):
@@ -227,17 +232,16 @@ class SnippetExpander:
         })
         hotkeys.start()
 
-        # Keyboard listener for expansion
+        # Keyboard listener for expansion (runs in a background thread)
         listener = keyboard.Listener(on_press=self.on_press)
+        listener.daemon = True
         listener.start()
         
         print("Snippet expander running...")
         print("Hotkeys: Ctrl+Shift+R (Sync), Ctrl+Shift+T (Toggle)")
         
-        # We need a mainloop for the Tk root, but listener.join() is blocking.
-        # Run the mainloop in a non-blocking way.
+        # Run the Tkinter main loop in the main thread
         self.root.mainloop()
-        listener.join()
 
 if __name__ == "__main__":
     expander = SnippetExpander()
