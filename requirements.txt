@@ -1,3 +1,5 @@
 requests
 pynput
 pyperclip
+pyautogui
+pywebview
