@@ -2,67 +2,54 @@
 # Cliente Desktop para Windows - Automação Médica
 # Interface nativa com fundo azul escuro, navegação por voz, atalhos e cliques
 # Detecta automaticamente se está no Windows e só ativa neste sistema
-
-import json
-import os
 import platform
-import sys
-import threading
 import time
 import tkinter as tk
-from tkinter import messagebox, ttk
-from urllib import request as urllib_request
 import traceback
+from tkinter import ttk
+from urllib import request as urllib_request
 
-# Função utilitária para lidar com pausas sem depender de input() em ambientes
-# onde stdin pode não estar disponível (ex: execução por atalho ou como
-# aplicativo empacotado).
+# Função utilitária para lidar com pausas...
 def pause_for_user(prompt, delay_seconds=3):
     """Exibe uma mensagem de pausa sem exigir entrada quando stdin não existe."""
     try:
-        if sys.stdin and sys.stdin.isatty():
-            input(prompt)
-            return
+        input(prompt)
     except (EOFError, RuntimeError):
-        pass
-
-    # Ambiente não interativo: apenas informar e aguardar brevemente para que
-    # o usuário leia a mensagem.
-    message = prompt.strip() or "Pressione Enter para continuar..."
-    print(message)
-    time.sleep(max(delay_seconds, 0))
+        # Ambiente não interativo: apenas informar e aguardar brevemente para que
+        # o usuário leia a mensagem.
+        message = prompt.strip() or "Pressione Enter para continuar..."
+        print(message)
+        time.sleep(max(delay_seconds, 0))
 
 # Tentar importar bibliotecas opcionais
-
 try:
     import requests
     REQUESTS_AVAILABLE = True
 except ImportError:
     REQUESTS_AVAILABLE = False
-    requests = None
-
-
+    requests = None # Keep this if you check for `requests` later
 
 try:
     import pyautogui
     AUTOGUI_AVAILABLE = True
 except ImportError:
     AUTOGUI_AVAILABLE = False
-
-try:
-    import pynput
-    from pynput import keyboard
-    PYNPUT_AVAILABLE = True
-except ImportError:
-    PYNPUT_AVAILABLE = False
+    pyautogui = None # Define as None if it fails to import
 
 try:
     import webview
-
     WEBVIEW_AVAILABLE = True
 except ImportError:
     WEBVIEW_AVAILABLE = False
     webview = None
+
+try:
+    from pynput import keyboard, mouse
+    PYNPUT_AVAILABLE = True
+except ImportError:
+    PYNPUT_AVAILABLE = False
+    keyboard = None
+    mouse = None
 
 
 class WindowsDesktopClient:
@@ -382,23 +369,23 @@ class WindowsDesktopClient:
 
     def create_navigation_area(self):
         """Criar área de navegação com 3 colunas"""
-        nav_frame = tk.Frame(self.root, bg=self.colors["bg_primary"])
-        nav_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+        self.nav_frame = tk.Frame(self.root, bg=self.colors["bg_primary"])
+        self.nav_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
         # Configurar grid
-        nav_frame.grid_columnconfigure(0, weight=1)
-        nav_frame.grid_columnconfigure(1, weight=1)
-        nav_frame.grid_columnconfigure(2, weight=1)
-        nav_frame.grid_rowconfigure(0, weight=1)
+        self.nav_frame.grid_columnconfigure(0, weight=1)
+        self.nav_frame.grid_columnconfigure(1, weight=1)
+        self.nav_frame.grid_columnconfigure(2, weight=1)
+        self.nav_frame.grid_rowconfigure(0, weight=1)
 
         # Coluna 1: Categorias
-        self.create_list_column(nav_frame, "📋 Categorias", 0, "categories")
+        self.create_list_column(self.nav_frame, "📋 Categorias", 0, "categories")
 
         # Coluna 2: Subcategorias
-        self.create_list_column(nav_frame, "📑 Subcategorias", 1, "subcategories")
+        self.create_list_column(self.nav_frame, "📑 Subcategorias", 1, "subcategories")
 
         # Coluna 3: Frases
-        self.create_list_column(nav_frame, "💬 Frases", 2, "phrases")
+        self.create_list_column(self.nav_frame, "💬 Frases", 2, "phrases")
 
     def create_list_column(self, parent, title, column, list_type):
         """Criar uma coluna de lista"""
@@ -460,7 +447,7 @@ class WindowsDesktopClient:
         preview_frame.pack(fill=tk.X, padx=10, pady=5)
 
         # Título
-        preview_title = tk.Label(
+        self.preview_title = tk.Label(
             preview_frame,
             text="👁️ Preview da Frase Selecionada",
             bg=self.colors["bg_secondary"],
@@ -468,7 +455,7 @@ class WindowsDesktopClient:
             font=("Segoe UI", int(12 * self.zoom_level), "bold"),
             pady=5,
         )
-        preview_title.pack()
+        self.preview_title.pack()
 
         # Área de texto
         text_frame = tk.Frame(preview_frame, bg=self.colors["bg_secondary"])
