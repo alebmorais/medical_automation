@@ -275,6 +275,56 @@ After fixing the issue found in the logs, restart the service to apply the chang
 sudo systemctl restart snippet-server.service
 ```
 
+### Service Fails with "No such file or directory"
+
+If the `journalctl` log shows an error like `can't open file ... [Errno 2] No such file or directory`, it means the `systemd` service cannot find your Python script.
+
+#### Step 1: Verify the File Name and Location
+
+First, confirm the exact name and location of your server script on the Raspberry Pi.
+
+1.  Connect to your Raspberry Pi and navigate to the project directory:
+    ```bash
+    cd /home/pi/medical_automation
+    ```
+
+2.  List the files in the directory:
+    ```bash
+    ls -l
+    ```
+
+3.  Look for your server script in the output. Is it named `server.py`, `ServidorCode2`, or something else? Make sure it's actually there.
+
+#### Step 2: Verify the Systemd Service File
+
+Next, ensure the `ExecStart` path in your service file matches the actual path and filename from Step 1.
+
+1.  Display the contents of your service file:
+    ```bash
+    cat /etc/systemd/system/snippet-server.service
+    ```
+
+2.  Check the `ExecStart` line. For example:
+    `ExecStart=/home/pi/medical_automation/venv/bin/python /home/pi/medical_automation/server.py`
+
+3.  If the path or filename is incorrect, edit the service file:
+    ```bash
+    sudo nano /etc/systemd/system/snippet-server.service
+    ```
+    Correct the filename to match what you found in Step 1.
+
+#### Step 3: Reload and Restart the Service
+
+After correcting the service file, you must reload `systemd` and restart the service.
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart snippet-server.service
+sudo systemctl status snippet-server.service
+```
+
+This should resolve the "No such file or directory" error.
+
 ### "Address already in use" Error
 
 If you see an error like `OSError: [Errno 98] Address already in use` when starting a server, it means another process is already using the port (e.g., 5000 or 8080). This often happens if a previous server instance did not shut down correctly.
