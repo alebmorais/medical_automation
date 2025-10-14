@@ -10,6 +10,102 @@ import sys
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import urllib.parse
 import traceback
+import datetime
+from threading import Thread
+
+# Flask imports for snippet server
+from flask import Flask, jsonify, request
+
+# --- Snippet Server (Flask App on port 5000) ---
+snippet_app = Flask(__name__)
+SNIPPET_DATABASE = 'snippets.db'
+
+def get_snippet_db_connection():
+    """Create a database connection for snippets."""
+    conn = sqlite3.connect(SNIPPET_DATABASE)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def init_snippet_db():
+    """Initialize the snippets database and create tables if they don't exist."""
+    with snippet_app.app_context():
+        conn = get_snippet_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS snippets (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                abbreviation TEXT NOT NULL UNIQUE,
+                phrase TEXT NOT NULL,
+                usage_count INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        conn.commit()
+        conn.close()
+        print("✓ Banco de dados de snippets inicializado.")
+
+@snippet_app.route('/health', methods=['GET'])
+def health_check():
+    """Health check endpoint for snippet server."""
+    return jsonify({"status": "healthy", "timestamp": datetime.datetime.now().isoformat()})
+
+@snippet_app.route('/snippets', methods=['GET'])
+def get_snippets():
+    """Get all snippets for the expander client."""
+    conn = get_snippet_db_connection()
+    snippets = conn.execute('SELECT abbreviation, phrase FROM snippets').fetchall()
+    conn.close()
+    return jsonify({row['abbreviation']: row['phrase'] for row in snippets})
+
+@snippet_app.route('/snippets/all', methods=['GET'])
+def get_all_snippets_full():
+    """Get all snippets with full details for the manager GUI."""
+    conn = get_snippet_db_connection()
+    snippets = conn.execute('SELECT id, abbreviation, phrase, usage_count FROM snippets').fetchall()
+    conn.close()
+    return jsonify([dict(row) for row in snippets])
+
+@snippet_app.route('/snippets', methods=['POST'])
+def create_snippet():
+    """Create a new snippet."""
+    data = request.get_json()
+    if not data or 'abbreviation' not in data or 'phrase' not in data:
+        return jsonify({"error": "Missing abbreviation or phrase"}), 400
+
+    conn = get_snippet_db_connection()
+    try:
+        conn.execute('INSERT INTO snippets (abbreviation, phrase) VALUES (?, ?)', (data['abbreviation'], data['phrase']))
+        conn.commit()
+    except sqlite3.IntegrityError:
+        return jsonify({"error": "Abbreviation already exists"}), 409
+    finally:
+        conn.close()
+    return jsonify({"message": "Snippet created successfully"}), 201
+
+@snippet_app.route('/snippets/<string:abbreviation>', methods=['PUT'])
+def update_snippet(abbreviation):
+    """Update an existing snippet."""
+    data = request.get_json()
+    if not data or 'phrase' not in data:
+        return jsonify({"error": "Missing phrase"}), 400
+
+    conn = get_snippet_db_connection()
+    conn.execute('UPDATE snippets SET phrase = ? WHERE abbreviation = ?', (data['phrase'], abbreviation))
+    conn.commit()
+    conn.close()
+    return jsonify({"message": "Snippet updated successfully"})
+
+@snippet_app.route('/snippets/<string:abbreviation>', methods=['DELETE'])
+def delete_snippet(abbreviation):
+    """Delete a snippet."""
+    conn = get_snippet_db_connection()
+    conn.execute('DELETE FROM snippets WHERE abbreviation = ?', (abbreviation,))
+    conn.commit()
+    conn.close()
+    return jsonify({"message": "Snippet deleted successfully"})
+
+# --- End of Snippet Server ---
+
 
 class MedicalAutomationServer:
     def __init__(self, db_path=None):
@@ -931,7 +1027,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                     }
                     button.innerHTML = `
                         <span class="list-item-title">${escapeHTML(phrase.nome)}</span>
-                        <span class="list-item-subtitle">${escapeHTML(phrase.subcategoria || state.selectedSubcategory || '')}</span>
+                        <span class="list-item-subtitle">${escapeHTML(phrase.subcategoria || state.selectedSubcategoria || '')}</span>
                     `;
                     button.addEventListener('click', () => {
                         state.selectedPhraseId = phrase.id;
@@ -1022,7 +1118,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
                     const params = new URLSearchParams();
                     params.set('categoria', category);
                     if (subcategory) {
-                        params.set('subcategoria', subcategory);
+                        params.set('subcategoria', subcategoria);
                     }
                     const response = await fetch(`/api/frases?${params.toString()}`);
                     if (!response.ok) {
@@ -1092,20 +1188,33 @@ class WebRequestHandler(BaseHTTPRequestHandler):
 </html>'''
 
 
-def run_server():
-    db_path = os.environ.get('AUTOMATION_DB_PATH') or os.environ.get('DB_PATH')
+def run_medical_server(db_path):
+    """Runs the medical phrases server on port 8080."""
     automation_server = MedicalAutomationServer(db_path=db_path)
     def handler(*args, **kwargs):
         WebRequestHandler(*args, automation_server=automation_server, **kwargs)
     server_address = ('', 8080)
     httpd = HTTPServer(server_address, handler)
-    print(f"Servidor rodando em http://localhost:8080 usando banco {automation_server.db_path}")
-    try:
-        httpd.serve_forever()
-    except KeyboardInterrupt:
-        print("\nServidor encerrado pelo usuário.")
-    finally:
-        httpd.server_close()
+    print(f"✓ Servidor de frases médicas rodando em http://localhost:8080")
+    httpd.serve_forever()
+
+def run_snippet_server():
+    """Runs the snippet server on port 5000."""
+    init_snippet_db()
+    print(f"✓ Servidor de snippets rodando em http://localhost:5000")
+    # Note: Flask's development server is not for production, but is fine for this use case.
+    snippet_app.run(host='0.0.0.0', port=5000)
+
+def run_all_servers():
+    db_path = os.environ.get('AUTOMATION_DB_PATH') or os.environ.get('DB_PATH')
+    
+    # Run medical server in a background thread
+    medical_thread = Thread(target=run_medical_server, args=(db_path,), daemon=True)
+    medical_thread.start()
+
+    # Run snippet server in the main thread
+    run_snippet_server()
+
 
 if __name__ == "__main__":
-    run_server()
+    run_all_servers()
