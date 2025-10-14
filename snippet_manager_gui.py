@@ -2,9 +2,10 @@ import tkinter as tk
 from tkinter import messagebox, simpledialog
 import requests
 import json
+from urllib.parse import quote, urljoin
 
-SERVER_URL = "http://192.168.0.34:5000"  # Corrected from http:/
-MEDICAL_SERVER_URL = "http://192.168.0.34:8080" # Corrected from http:/
+SERVER_URL = "http://192.168.0.34:5000"
+MEDICAL_SERVER_URL = "http://192.168.0.34:8080"
 
 class SnippetManager(tk.Tk):
     def __init__(self):
@@ -111,10 +112,14 @@ Available Template Variables:
         
         # Fetch categories to show as options
         try:
-            response = requests.get(f"{MEDICAL_SERVER_URL}/categories")
+            # Corrected URL to use /api/ and urljoin
+            response = requests.get(urljoin(MEDICAL_SERVER_URL, "api/categories"))
             response.raise_for_status()
-            categories = [cat['name'] for cat in response.json()]
-        except requests.RequestException as e:
+            # The server returns a simple list of strings, so no need to parse objects.
+            categories = response.json()
+            if not isinstance(categories, list):
+                raise ValueError("Server did not return a list of categories.")
+        except (requests.RequestException, ValueError) as e:
             messagebox.showerror("Error", f"Could not fetch categories from medical server: {e}")
             return
 
@@ -125,7 +130,8 @@ Available Template Variables:
         phrase = f"{{{{SELECT_PHRASE:{cat_name}}}}}"
 
         try:
-            requests.post(f"{SERVER_URL}/snippets", json={"abbreviation": abbr, "phrase": phrase}).raise_for_status()
+            # Use urljoin for safety
+            requests.post(urljoin(SERVER_URL, "snippets"), json={"abbreviation": abbr, "phrase": phrase}).raise_for_status()
             self.load_snippets()
         except requests.RequestException as e:
             messagebox.showerror("Error", f"Failed to add snippet: {e}")
@@ -147,7 +153,9 @@ Available Template Variables:
         if not new_phrase: return
 
         try:
-            requests.put(f"{SERVER_URL}/snippets/{snippet['abbreviation']}", json={"phrase": new_phrase}).raise_for_status()
+            # URL-encode the abbreviation to handle special characters like '/'
+            encoded_abbr = quote(snippet['abbreviation'], safe='')
+            requests.put(f"{SERVER_URL}/snippets/{encoded_abbr}", json={"phrase": new_phrase}).raise_for_status()
             self.load_snippets()
         except requests.RequestException as e:
             messagebox.showerror("Error", f"Failed to edit snippet: {e}")
@@ -159,7 +167,9 @@ Available Template Variables:
 
         if messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete '{snippet['abbreviation']}'?"):
             try:
-                requests.delete(f"{SERVER_URL}/snippets/{snippet['abbreviation']}").raise_for_status()
+                # URL-encode the abbreviation to handle special characters like '/'
+                encoded_abbr = quote(snippet['abbreviation'], safe='')
+                requests.delete(f"{SERVER_URL}/snippets/{encoded_abbr}").raise_for_status()
                 self.load_snippets()
             except requests.RequestException as e:
                 messagebox.showerror("Error", f"Failed to delete snippet: {e}")

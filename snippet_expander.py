@@ -4,6 +4,7 @@ import os
 import threading
 import datetime
 import requests
+from urllib.parse import urljoin
 from pynput import keyboard
 import pyperclip
 import tkinter as tk
@@ -35,12 +36,12 @@ class PhraseSelector(tk.Toplevel):
         main_frame = ttk.Frame(self, padding="10")
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        ttk.Label(main_frame, text="Subcategory:").pack(anchor="w")
-        self.sub_combo = ttk.Combobox(main_frame, state="readonly")
-        self.sub_combo.pack(fill=tk.X, pady=(0, 10))
-        self.sub_combo.bind("<<ComboboxSelected>>", self.on_subcategory_select)
+        ttk.Label(main_frame, text="Filter:").pack(anchor="w")
+        self.search_entry = ttk.Entry(main_frame)
+        self.search_entry.pack(fill=tk.X, pady=(0, 10))
+        self.search_entry.bind("<KeyRelease>", self.filter_phrases)
 
-        ttk.Label(main_frame, text="Phrase:").pack(anchor="w")
+        ttk.Label(main_frame, text="Available Phrases:").pack(anchor="w")
         self.phrase_list = tk.Listbox(main_frame)
         self.phrase_list.pack(fill=tk.BOTH, expand=True)
         self.phrase_list.bind("<Double-1>", self.on_select)
@@ -51,59 +52,67 @@ class PhraseSelector(tk.Toplevel):
         ttk.Button(btn_frame, text="Cancel", command=self.cancel).pack(side=tk.RIGHT, padx=5)
 
     def load_data(self):
+        """Load all phrases for the given category."""
         try:
-            # 1. Get all categories to find the ID for our category_name
-            cats_res = requests.get(f"{MEDICAL_SERVER_URL}/categories")
-            cats_res.raise_for_status()
-            categories = cats_res.json()
+            # Fetch all phrases for the given category
+            params = {'categoria': self.category_name}
+            url = urljoin(MEDICAL_SERVER_URL, "api/frases")
+            phrases_res = requests.get(url, params=params)
+            phrases_res.raise_for_status()
+            self.phrases = phrases_res.json()
             
-            cat_id = None
-            for cat in categories:
-                if cat['name'].lower() == self.category_name.lower():
-                    cat_id = cat['id']
-                    break
-            
-            if not cat_id:
-                self.cancel()
-                return
-
-            # 2. Get subcategories for that category
-            subs_res = requests.get(f"{MEDICAL_SERVER_URL}/subcategories/{cat_id}")
-            subs_res.raise_for_status()
-            self.subcategories = subs_res.json()
-            self.sub_combo['values'] = [s['name'] for s in self.subcategories]
+            self.populate_list()
 
         except requests.RequestException as e:
             print(f"Error loading medical data: {e}")
             self.cancel()
 
-    def on_subcategory_select(self, event=None):
-        selected_sub_name = self.sub_combo.get()
-        sub_id = None
-        for sub in self.subcategories:
-            if sub['name'] == selected_sub_name:
-                sub_id = sub['id']
-                break
+    def populate_list(self, query=""):
+        """Populate the listbox with phrases, optionally filtering by a query."""
+        self.phrase_list.delete(0, tk.END)
         
-        if not sub_id: return
+        filtered_phrases = self.phrases
+        if query:
+            query = query.lower()
+            filtered_phrases = [
+                p for p in self.phrases 
+                if query in p.get('nome', '').lower() or query in p.get('conteudo', '').lower()
+            ]
 
-        try:
-            phrases_res = requests.get(f"{MEDICAL_SERVER_URL}/phrases/{sub_id}")
-            phrases_res.raise_for_status()
-            self.phrases = phrases_res.json()
+        if not filtered_phrases:
+            self.phrase_list.insert(tk.END, "No matching phrases found.")
+            return
+
+        last_subcategory = None
+        for p in filtered_phrases:
+            # Add a subcategory header if it changes
+            subcategory = p.get('subcategoria', 'Uncategorized')
+            if subcategory != last_subcategory:
+                self.phrase_list.insert(tk.END, f"--- {subcategory} ---")
+                last_subcategory = subcategory
             
-            self.phrase_list.delete(0, tk.END)
-            for p in self.phrases:
-                self.phrase_list.insert(tk.END, p['text'])
-        except requests.RequestException as e:
-            print(f"Error loading phrases: {e}")
+            self.phrase_list.insert(tk.END, f"  {p.get('nome', 'Unnamed Phrase')}")
+    
+    def filter_phrases(self, event=None):
+        """Filter the phrases in the listbox based on search entry."""
+        self.populate_list(self.search_entry.get())
 
     def on_select(self, event=None):
         selected_indices = self.phrase_list.curselection()
         if not selected_indices: return
         
-        self.selected_phrase = self.phrase_list.get(selected_indices[0])
-        self.destroy()
+        selected_text = self.phrase_list.get(selected_indices[0]).strip()
+
+        # Find the corresponding phrase object to get the full content
+        for p in self.phrases:
+            if p.get('nome', 'Unnamed Phrase') == selected_text:
+                self.selected_phrase = p.get('conteudo')
+                self.destroy()
+                return
+        
+        # If a header was clicked, do nothing
+        if selected_text.startswith("---"):
+            return
 
     def cancel(self):
         self.selected_phrase = None
@@ -160,9 +169,13 @@ class SnippetExpander:
     def expand(self, abbr, expansion):
         """Delete the abbreviation and type the expansion."""
         # Check for special selector syntax
+        if expansion.startswith("{{SEARCH_PHRASES:") and expansion.endswith("}}"):
+            # Schedule the GUI to run in the main thread
+            self.root.after(0, self.show_phrase_selector, abbr, expansion, "SEARCH_PHRASES")
+            return
         if expansion.startswith("{{SELECT_PHRASE:") and expansion.endswith("}}"):
             # Schedule the GUI to run in the main thread
-            self.root.after(0, self.show_phrase_selector, abbr, expansion)
+            self.root.after(0, self.show_phrase_selector, abbr, expansion, "SELECT_PHRASE")
             return
 
         # Delete abbreviation plus the commit character (space/tab/enter)
@@ -175,9 +188,9 @@ class SnippetExpander:
         self.kb_controller.type(processed_text)
         self.buffer = ""
 
-    def show_phrase_selector(self, abbr, expansion):
+    def show_phrase_selector(self, abbr, expansion, mode):
         """Creates and shows the phrase selector dialog."""
-        category_name = expansion.replace("{{SELECT_PHRASE:", "").replace("}}", "")
+        category_name = expansion.replace(f"{{{{{mode}:", "").replace("}}", "")
         
         # First, delete the typed abbreviation
         for _ in range(len(abbr) + 1):
