@@ -763,6 +763,8 @@ class WindowsDesktopClient:
 
     def toggle_minimize(self):
         """Minimizar ou restaurar a janela."""
+        if not self.root:
+            return
         if self.root.state() == "normal":
             self.root.iconify()
             self.update_status("Janela minimizada.")
