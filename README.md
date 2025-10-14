@@ -1,108 +1,148 @@
-# Medical Automation Suite
+# Medical Automation Suite - Deployment Guide
 
-This project is a suite of tools designed to accelerate medical documentation and writing. It consists of two main components: a phrase selection client and a text snippet expander.
+This guide provides step-by-step instructions for deploying the Medical Automation Suite, which includes the **Medical Phrase Client** and the **Snippet Expander**.
 
-## 1. Medical Automation Client (`ClienteWindows`)
+## 1. Server Deployment (Raspberry Pi)
 
-### 🎯 Overview
+The server component runs on a Raspberry Pi or any Linux machine on your network. It hosts the REST APIs for both the medical phrases and the text snippets.
 
-A Windows desktop client for browsing a database of medical phrases organized by categories and subcategories. It allows for quick selection and insertion of phrases into other applications via auto-typing or copying to the clipboard.
+### Prerequisites
+- A Raspberry Pi with Raspberry Pi OS (or any Debian-based Linux).
+- Python 3 installed.
+- Network connectivity between the server and client machines.
 
-### ✨ Features
+### Step 1: Install Dependencies
+First, install the necessary Python libraries for the server.
 
-*   **Dual UI Modes**:
-    *   **Webview Mode**: A modern interface that loads the web front-end directly from the Raspberry Pi (requires `pywebview`).
-    *   **Legacy Mode**: A native Tkinter interface that functions as a fallback if `pywebview` is not installed or the Pi is unreachable.
-*   **Global Hotkeys**:
-    *   `Ctrl+Alt+D`: Automatically type the selected phrase.
-    *   `Ctrl+C`: Copy the selected phrase to the clipboard.
-    *   `Ctrl+Alt+M`: Minimize or restore the application window.
-*   **Zoom Control**: Use `Ctrl` + `+` (zoom in), `Ctrl` + `-` (zoom out), and `Ctrl` + `0` (reset zoom) to adjust font sizes.
-
-### 📦 Setup
-
-1.  **Backend Server**: This client requires a backend server running on a Raspberry Pi at `http://pi.local:8080`. The server should provide the necessary API endpoints for categories, subcategories, and phrases.
-
-2.  **Install Dependencies**:
-    ```bash
-    pip install requests pynput pywebview pyautogui pyperclip
-    ```
-    *Note: These dependencies are optional and the application will gracefully handle their absence, though functionality will be limited.*
-
-### 🚀 Usage
-
-Run the client from your terminal:
 ```bash
-python ClienteWindows
+# For the Snippet Expander server
+pip3 install Flask
+
+# For the Medical Phrase Client server (if separate)
+# Ensure its dependencies are also installed.
 ```
-The application will launch, connect to the server, and allow you to navigate and use the medical phrases.
 
----
+### Step 2: Place Project Files
+Copy the project files (`server.py`, `snippets.db`, and the backend for the medical phrases) to a directory on your Raspberry Pi, for example, `/home/pi/medical_automation`.
 
-## 2. Snippet Expander
+### Step 3: Create a Systemd Service
+To ensure the snippet server runs automatically on boot, we will create a `systemd` service.
 
-### 🎯 Overview
-
-A powerful text expansion tool that automatically expands custom abbreviations into full text as you type. For example, typing `//email` can expand to your full email address. It supports dynamic template variables like `{date}` and `{clipboard}`.
-
-### 🏛️ Architecture
-
-*   **Server (`server.py`)**: A lightweight Flask application that runs on a network machine (like a Raspberry Pi) to store and manage snippets via a REST API.
-*   **Client**:
-    *   `snippet_expander.py`: A background script that monitors keyboard input and performs expansions.
-    *   `snippet_manager_gui.py`: A GUI application for creating, editing, and deleting snippets.
-
-### 📦 Installation
-
-#### On the Server (e.g., Raspberry Pi)
-
-1.  **Install Dependencies**:
+1.  Create a new service file:
     ```bash
-    pip install Flask
+    sudo nano /etc/systemd/system/snippet-server.service
     ```
-2.  **Run the Server**:
+
+2.  Add the following content to the file. **Adjust the paths** if you placed the project in a different directory.
+
+    ```ini
+    [Unit]
+    Description=Snippet Expansion Server
+    After=network.target
+
+    [Service]
+    Type=simple
+    User=pi
+    WorkingDirectory=/home/pi/medical_automation
+    ExecStart=/usr/bin/python3 /home/pi/medical_automation/server.py
+    Restart=always
+
+    [Install]
+    WantedBy=multi-user.target
+    ```
+
+### Step 4: Enable and Start the Service
+1.  Reload the systemd daemon to recognize the new service:
     ```bash
-    python3 server.py
+    sudo systemctl daemon-reload
     ```
-    This will create a `snippets.db` file and start the server on port 5000.
+2.  Enable the service to start on boot:
+    ```bash
+    sudo systemctl enable snippet-server.service
+    ```
+3.  Start the service immediately:
+    ```bash
+    sudo systemctl start snippet-server.service
+    ```
+4.  Check the status to ensure it's running without errors:
+    ```bash
+    sudo systemctl status snippet-server.service
+    ```
 
-#### On the Client (Windows)
+## 2. Client Deployment (Windows)
 
-1.  **Install Dependencies**:
+The client applications run on your primary Windows machine.
+
+### Prerequisites
+- Windows 10 or 11.
+- Python 3 installed.
+
+### Step 1: Install Dependencies
+1.  Copy the project files to your Windows machine.
+2.  Open a Command Prompt or PowerShell and navigate to the project directory.
+3.  Install all required Python packages using `requirements.txt`:
     ```bash
     pip install -r requirements.txt
     ```
-2.  **Configure Server URL**:
-    *   Open `snippet_expander.py` and `snippet_manager_gui.py`.
-    *   If your server is not at `http://pi.local:5000`, change the `SERVER_URL` variable to your server's IP address (e.g., `http://192.168.1.100:5000`).
+    *Note: This will install `requests`, `pynput`, `pyperclip`, `pyautogui`, and `pywebview`.*
 
-### 🚀 Usage
+### Step 2: Configure Server URLs
+Before running the client applications, you **must** configure them to point to your server's IP address.
 
-1.  **Manage Snippets**:
-    Run the GUI manager to add, edit, or delete your snippets.
+1.  Find your Raspberry Pi's IP address (e.g., `192.168.1.100`).
+2.  Open the following files in a text editor:
+    -   `ClienteWindows`
+    -   `snippet_expander.py`
+    -   `snippet_manager_gui.py`
+3.  In each file, find the URL variables and replace `pi.local` with your server's IP address.
+    -   `pi_url = "http://192.168.1.100:8080"`
+    -   `SERVER_URL = "http://192.168.1.100:5000"`
+    -   `MEDICAL_SERVER_URL = "http://192.168.1.100:8080"`
+
+### Step 3: Running the Applications
+
+You can run the applications directly using Python.
+
+*   **Medical Phrase Client**:
+    ```bash
+    python ClienteWindows
+    ```
+*   **Snippet Manager GUI**:
     ```bash
     python snippet_manager_gui.py
     ```
+*   **Snippet Expander** (requires Administrator rights):
+    1.  Open Command Prompt **as Administrator**.
+    2.  Navigate to the project directory.
+    3.  Run the script:
+        ```bash
+        python snippet_expander.py
+        ```
 
-2.  **Start Text Expansion**:
-    Run the expander script in the background. On Windows, this may require Administrator privileges.
+### (Optional) Step 4: Creating Executables for Easy Access
+
+For easier daily use, you can package the Python scripts into standalone `.exe` files using `PyInstaller`.
+
+1.  **Install PyInstaller**:
     ```bash
-    python snippet_expander.py
+    pip install pyinstaller
     ```
 
-### Hotkeys & Templates
+2.  **Create the Executables**:
+    Run these commands from your project directory.
 
-*   **Hotkeys**: `Ctrl+Shift+R` (Sync from server), `Ctrl+Shift+T` (Toggle expansion).
-*   **Template Variables**: Use `{date}`, `{time}`, `{clipboard}`, etc., in your phrases for dynamic content.
+    *   **For GUI Applications** (this hides the console window):
+        ```bash
+        pyinstaller --onefile --windowed ClienteWindows
+        pyinstaller --onefile --windowed snippet_manager_gui.py
+        ```
 
-| Variable      | Output                  |
-| ------------- | ----------------------- |
-| `{date}`      | Current date            |
-| `{time}`      | Current time            |
-| `{datetime}`  | Date and time           |
-| `{day}`       | Full day name           |
-| `{month}`     | Full month name         |
-| `{year}`      | Four-digit year         |
-| `{clipboard}` | Current clipboard content |
+    *   **For the Background Snippet Expander**:
+        ```bash
+        pyinstaller --onefile snippet_expander.py
+        ```
+
+3.  **Find the Executables**:
+    The `.exe` files will be located in the `dist` folder inside your project directory. You can create shortcuts to these files on your Desktop or Start Menu for easy access. Remember to run the `snippet_expander.exe` **as Administrator**.
 
 
