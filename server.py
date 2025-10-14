@@ -1201,11 +1201,11 @@ def run_medical_server(db_path):
 def run_snippet_server():
     """Runs the snippet server on port 5000."""
     init_snippet_db()
-    print(f"✓ Servidor de snippets rodando em http://localhost:5000")
-    # Note: Flask's development server is not for production, but is fine for this use case.
-    # threaded=True helps handle simultaneous requests more gracefully.
-    snippet_app.run(host='0.0.0.0', port=5000, threaded=True)
-
+    print(f"✓ Servidor de snippets pronto para produção em http://localhost:5000")
+    print("⚠️ Atenção: Não utilize o servidor Flask embutido em produção. Use Gunicorn ou outro WSGI server.")
+    print("Exemplo para produção: gunicorn -w 4 -b 0.0.0.0:5000 server:snippet_app")
+    # snippet_app.run(host='0.0.0.0', port=5000, threaded=True)  # Somente para desenvolvimento
+    snippet_app.run(host='0.0.0.0', port=5000)
 def run_all_servers():
     db_path = os.environ.get('AUTOMATION_DB_PATH') or os.environ.get('DB_PATH')
     
