@@ -67,13 +67,14 @@ class TextFileParser:
                     if current_subcategory not in all_data["categories"][current_category]:
                         all_data["categories"][current_category].append(current_subcategory)
                     order_in_subcategory = 1
-                elif phrase_match and current_category and current_subcategory:
+                elif stripped_line and current_category and current_subcategory:
                     # A new phrase is starting. Save any pending phrase content first.
-                    save_pending_phrase()
-                    current_phrase_lines.append(phrase_match.group(1).strip())
-                elif stripped_line and current_phrase_lines:
-                    # This is a continuation of a multi-line phrase
-                    current_phrase_lines.append(stripped_line)
+                    if phrase_match:
+                        save_pending_phrase()
+                        current_phrase_lines.append(phrase_match.group(1).strip())
+                    elif current_phrase_lines:
+                        # This is a continuation of a multi-line phrase
+                        current_phrase_lines.append(stripped_line)
 
         save_pending_phrase() # Save the very last phrase in the file
 
