@@ -68,12 +68,13 @@ class TextFileParser:
                         all_data["categories"][current_category].append(current_subcategory)
                     order_in_subcategory = 1
                 elif stripped_line and current_category and current_subcategory:
-                    # A new phrase is starting. Save any pending phrase content first.
+                    # This is a potential phrase line (either start or continuation)
                     if phrase_match:
+                        # A new numbered phrase is starting. Save the previous one.
                         save_pending_phrase()
                         current_phrase_lines.append(phrase_match.group(1).strip())
                     elif current_phrase_lines:
-                        # This is a continuation of a multi-line phrase
+                        # This is a continuation of a multi-line phrase.
                         current_phrase_lines.append(stripped_line)
 
         save_pending_phrase() # Save the very last phrase in the file
