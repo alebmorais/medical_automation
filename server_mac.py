@@ -946,9 +946,9 @@ class WebRequestHandler(BaseHTTPRequestHandler):
 </body>
 </html>'''
 
-    # Safely inject the JSON data into the template. We use replace instead of an f-string
-    # to avoid accidental interpretation of single braces in the large HTML/CSS content.
-    return template.replace('{injected_data}', injected_data)
+        # Safely inject the JSON data into the template. We use replace instead of an f-string
+        # to avoid accidental interpretation of single braces in the large HTML/CSS content.
+        return template.replace('{injected_data}', injected_data)
 
 def run_server():
     """Runs the medical phrases server."""
