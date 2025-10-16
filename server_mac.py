@@ -34,9 +34,8 @@ class TextFileParser:
             nonlocal order_in_subcategory, phrase_id_counter
             if current_phrase_lines and current_category and current_subcategory:
                 content = "\n".join(current_phrase_lines).strip()
-                # Use the first line of the content as a base for the name, or a default
                 phrase_name = content.split('\n')[0]
-                if len(phrase_name) > 50: # Truncate long names
+                if len(phrase_name) > 50:
                     phrase_name = phrase_name[:47] + "..."
 
                 all_data["phrases"].append({
@@ -68,18 +67,14 @@ class TextFileParser:
                         all_data["categories"][current_category].append(current_subcategory)
                     order_in_subcategory = 1
                 elif stripped_line and current_category and current_subcategory:
-                    # This is a potential phrase line (either start or continuation)
                     if phrase_match:
-                        # A new numbered phrase is starting. Save the previous one.
                         save_pending_phrase()
                         current_phrase_lines.append(phrase_match.group(1).strip())
                     elif current_phrase_lines:
-                        # This is a continuation of a multi-line phrase.
                         current_phrase_lines.append(stripped_line)
 
-        save_pending_phrase() # Save the very last phrase in the file
+        save_pending_phrase()
 
-        # Ordenar subcategorias
         for cat in all_data["categories"]:
             all_data["categories"][cat].sort()
 
@@ -129,10 +124,12 @@ class MedicalAutomationServer:
 
 class WebRequestHandler(BaseHTTPRequestHandler):
     def __init__(self, *args, automation_server=None, **kwargs):
+        if automation_server is None:
+            raise ValueError("automation_server parameter is required")
         self.automation_server = automation_server
         super().__init__(*args, **kwargs)
 
-    def log_message(self, format, *args):
+    def log_message(self, fmt, *args):
         """Suprimir logs desnecessarios"""
         pass
 
@@ -142,17 +139,11 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             parsed_url = urllib.parse.urlparse(self.path)
             path = parsed_url.path
 
-            # API routes - This version serves all data at once, so API endpoints are not needed.
-            # If you want to re-enable them, you would add them here.
-            # Example:
-            # if path.startswith('/api/'):
-            #     ...
-
             # Root path for HTML interface
             if path == '/':
                 self.send_medical_interface()
                 return
-
+    
             self.send_error(404, "Página não encontrada")
         except Exception as e:
             print(f"Erro na requisição {self.path}: {e}")
@@ -872,26 +863,14 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             }
 
             async function loadPhrases(category, subcategory) {
-                if (!category) {
-                    return;
+                if (!category || !subcategory) {
+                    state.phrases = [];
+                } else {
+                    state.phrases = (ALL_DATA.phrases || []).filter(p => 
+                        p.categoria_principal === category && p.subcategoria === subcategoria
+                    );
                 }
-                try {
-                    const params = new URLSearchParams();
-                    params.set('categoria', category);
-                    if (subcategory) {
-                        params.set('subcategoria', subcategory);
-                    }
-                    const response = await fetch(`/api/frases?${params.toString()}`);
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}`);
-                    }
-                    const data = await response.json();
-                    state.phrases = Array.isArray(data) ? data : [];
-                    renderPhrases();
-                } catch (error) {
-                    console.error('Erro ao carregar frases', error);
-                    renderEmptyState(phraseList, 'Erro ao carregar frases.');
-                }
+                renderPhrases();
             }
 
             function setupQuickActions() {

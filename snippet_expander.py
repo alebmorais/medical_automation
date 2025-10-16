@@ -10,8 +10,8 @@ import pyperclip
 import tkinter as tk
 from tkinter import ttk
 
-SERVER_URL = "http://192.168.0.34:5000"  # Corrected from http:/
-MEDICAL_SERVER_URL = "http://192.168.0.34:8080" # Corrected from http:/
+SERVER_URL = "https://192.168.0.34:5000"  # Changed to HTTPS
+MEDICAL_SERVER_URL = "https://192.168.0.34:8080" # Changed to HTTPS
 CACHE_FILE = "snippets_cache.json"
 
 class PhraseSelector(tk.Toplevel):
@@ -22,7 +22,8 @@ class PhraseSelector(tk.Toplevel):
         self.kb_controller = controller
         self.selected_phrase = None
 
-        self.title(f"Select Phrase from '{category_name}'")
+        safe_category_name = "".join(c for c in category_name if c.isalnum() or c in (" ", "_", "-"))
+        self.title(f"Select Phrase from '{safe_category_name}'")
         self.geometry("600x400")
         self.attributes("-topmost", True)
 
@@ -57,7 +58,7 @@ class PhraseSelector(tk.Toplevel):
             # Fetch all phrases for the given category
             params = {'categoria': self.category_name}
             url = urljoin(MEDICAL_SERVER_URL, "api/frases")
-            phrases_res = requests.get(url, params=params)
+            phrases_res = requests.get(url, params=params, timeout=10)
             phrases_res.raise_for_status()
             self.phrases = phrases_res.json()
             
@@ -137,7 +138,7 @@ class SnippetExpander:
         """Fetch snippets from the server and update local cache."""
         try:
             url = urljoin(SERVER_URL, "snippets")
-            response = requests.get(url)
+            response = requests.get(url, timeout=10)
             response.raise_for_status()
             self.snippets = response.json()
             with open(CACHE_FILE, 'w') as f:

@@ -1,11 +1,10 @@
 import tkinter as tk
 from tkinter import messagebox, simpledialog
 import requests
-import json
 from urllib.parse import urljoin, quote
 
-SERVER_URL = "http://192.168.0.34:5000"
-MEDICAL_SERVER_URL = "http://192.168.0.34:8080"
+SERVER_URL = "https://192.168.0.34:5000"
+MEDICAL_SERVER_URL = "https://192.168.0.34:8080"
 
 class SnippetManager(tk.Tk):
     def __init__(self):
@@ -77,7 +76,7 @@ Available Template Variables:
         """Load snippets from the server and populate the listbox."""
         try:
             url = urljoin(SERVER_URL, "snippets/all")
-            response = requests.get(url)
+            response = requests.get(url, timeout=5)
             response.raise_for_status()
             data = response.json()
             if not isinstance(data, list):
@@ -102,7 +101,7 @@ Available Template Variables:
 
         try:
             url = urljoin(SERVER_URL, "snippets")
-            requests.post(url, json={"abbreviation": abbr, "phrase": phrase}).raise_for_status()
+            requests.post(url, json={"abbreviation": abbr, "phrase": phrase}, timeout=5).raise_for_status()
             self.load_snippets()
         except requests.RequestException as e:
             messagebox.showerror("Error", f"Failed to add snippet: {e}")
@@ -115,7 +114,7 @@ Available Template Variables:
         # Fetch categories to show as options
         try:
             url = urljoin(MEDICAL_SERVER_URL, "api/categorias")
-            response = requests.get(url)
+            response = requests.get(url, timeout=5)
             response.raise_for_status()
             categories = response.json()
             if not isinstance(categories, list):
@@ -133,7 +132,7 @@ Available Template Variables:
 
         try:
             url = urljoin(SERVER_URL, "snippets")
-            requests.post(url, json={"abbreviation": abbr, "phrase": phrase}).raise_for_status()
+            requests.post(url, json={"abbreviation": abbr, "phrase": phrase}, timeout=5).raise_for_status()
             self.load_snippets()
         except requests.RequestException as e:
             messagebox.showerror("Error", f"Failed to add snippet: {e}")
@@ -157,7 +156,7 @@ Available Template Variables:
         try:
             encoded_abbr = quote(snippet['abbreviation'], safe='')
             url = urljoin(SERVER_URL, f"snippets/{encoded_abbr}")
-            requests.put(url, json={"phrase": new_phrase}).raise_for_status()
+            requests.put(url, json={"phrase": new_phrase}, timeout=5).raise_for_status()
             self.load_snippets()
         except requests.RequestException as e:
             messagebox.showerror("Error", f"Failed to edit snippet: {e}")
@@ -171,7 +170,7 @@ Available Template Variables:
             try:
                 encoded_abbr = quote(snippet['abbreviation'], safe='')
                 url = urljoin(SERVER_URL, f"snippets/{encoded_abbr}")
-                requests.delete(url).raise_for_status()
+                requests.delete(url, timeout=5).raise_for_status()
                 self.load_snippets()
             except requests.RequestException as e:
                 messagebox.showerror("Error", f"Failed to delete snippet: {e}")

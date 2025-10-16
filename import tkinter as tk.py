@@ -1,9 +1,8 @@
 import tkinter as tk
 from tkinter import messagebox, simpledialog
 import requests
-import json
 
-SERVER_URL = "http://pi.local:5000"  # Change to your Pi's IP if needed
+SERVER_URL = "https://pi.local:5000"  # Change to your Pi's IP if needed. HTTPS is recommended.
 
 class SnippetManager(tk.Tk):
     def __init__(self):
@@ -35,7 +34,7 @@ class SnippetManager(tk.Tk):
     def load_snippets(self):
         """Load snippets from the server and populate the listbox."""
         try:
-            response = requests.get(f"{SERVER_URL}/snippets/all")
+            response = requests.get(f"{SERVER_URL}/snippets/all", timeout=5)
             response.raise_for_status()
             self.snippets = response.json()
             
@@ -54,7 +53,7 @@ class SnippetManager(tk.Tk):
         if not phrase: return
 
         try:
-            requests.post(f"{SERVER_URL}/snippets", json={"abbreviation": abbr, "phrase": phrase}).raise_for_status()
+            requests.post(f"{SERVER_URL}/snippets", json={"abbreviation": abbr, "phrase": phrase}, timeout=5).raise_for_status()
             self.load_snippets()
         except requests.RequestException as e:
             messagebox.showerror("Error", f"Failed to add snippet: {e}")
@@ -76,7 +75,7 @@ class SnippetManager(tk.Tk):
         if not new_phrase: return
 
         try:
-            requests.put(f"{SERVER_URL}/snippets/{snippet['abbreviation']}", json={"phrase": new_phrase}).raise_for_status()
+            requests.put(f"{SERVER_URL}/snippets/{snippet['abbreviation']}", json={"phrase": new_phrase}, timeout=5).raise_for_status()
             self.load_snippets()
         except requests.RequestException as e:
             messagebox.showerror("Error", f"Failed to edit snippet: {e}")
@@ -88,7 +87,7 @@ class SnippetManager(tk.Tk):
 
         if messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete '{snippet['abbreviation']}'?"):
             try:
-                requests.delete(f"{SERVER_URL}/snippets/{snippet['abbreviation']}").raise_for_status()
+                requests.delete(f"{SERVER_URL}/snippets/{snippet['abbreviation']}", timeout=5).raise_for_status()
                 self.load_snippets()
             except requests.RequestException as e:
                 messagebox.showerror("Error", f"Failed to delete snippet: {e}")
