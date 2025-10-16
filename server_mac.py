@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 """
 Servidor de Automação Médica
-Versão para macOS (standalone) - Modificado para ler 'database' diretamente.
 """
 import json
 import os
 import sys
-import re
 from functools import partial
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import urllib.parse
@@ -288,7 +286,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             font-size: 1.1rem;
             color: var(--text-primary);
         }
-
+        
         .panel small {
             color: var(--text-muted);
             font-size: 0.8rem;
