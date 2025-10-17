@@ -4,13 +4,14 @@ This guide provides step-by-step instructions for deploying the Medical Automati
 
 ## Security Hardening Overview
 
-To keep the deployment resilient, follow these five guardrails:
+To keep the deployment resilient, follow these six guardrails:
 
 1. **Isolate the services.** Run them under a dedicated Unix account with no shell access and ownership restricted to the project directory and database files.
 2. **Pin & patch dependencies.** Python requirements are now version-pinned. Schedule a recurring (e.g., monthly) reminder to review `pip list --outdated` and update the pinned versions after testing.
 3. **Add telemetry.** Both services write structured logs to `logs/medical_automation.log` by default (override via `MEDICAL_AUTOMATION_LOG_DIR`). Review this log for crashes or suspicious traffic.
-4. **Threat-model the simplest abuse.** The snippet management API now requires an explicit opt-in (`SNIPPET_ADMIN_ENABLED=1`) and a strong `SNIPPET_ADMIN_TOKEN` header to prevent drive-by edits.
-5. **Minimize scope.** Keep only the endpoints you need. Leave the snippet admin API disabled unless you are actively managing snippets, and keep the Flask development server bound to `127.0.0.1` when reverse-proxying.
+4. **Terminate HTTPS at the edge.** Place the HTTP services behind an HTTPS reverse proxy (e.g., Nginx, Caddy, or Traefik) and redirect all plain HTTP traffic to HTTPS. This prevents credentials and medical content from traversing the network in cleartext.
+5. **Threat-model the simplest abuse.** The snippet management API now requires an explicit opt-in (`SNIPPET_ADMIN_ENABLED=1`) and a strong `SNIPPET_ADMIN_TOKEN` header to prevent drive-by edits.
+6. **Minimize scope.** Keep only the endpoints you need. Leave the snippet admin API disabled unless you are actively managing snippets, and keep the Flask development server bound to `127.0.0.1` when reverse-proxying.
 
 ## Dependency Management
 
@@ -165,6 +166,37 @@ To ensure the unified server runs automatically on boot, we will create a `syste
     ```bash
     sudo systemctl status medical-server.service
     ```
+
+### Step 7: Enforce HTTPS with a Reverse Proxy
+
+Running the Flask development server directly on the network leaves traffic unencrypted. Terminate TLS in front of the service so clients always connect over HTTPS:
+
+1.  Install a reverse proxy (e.g., Nginx) and obtain certificates via Let's Encrypt (`certbot`) or another trusted CA.
+2.  Bind Flask only to the loopback interface (`127.0.0.1`) and expose port 443 on the proxy. Example Nginx server block:
+    ```nginx
+    server {
+        listen 443 ssl http2;
+        server_name medical-automation.example.com;
+
+        ssl_certificate /etc/letsencrypt/live/medical-automation.example.com/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/medical-automation.example.com/privkey.pem;
+
+        location / {
+            proxy_pass http://127.0.0.1:5000;
+            proxy_set_header Host $host;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto https;
+        }
+    }
+
+    server {
+        listen 80;
+        server_name medical-automation.example.com;
+        return 301 https://$host$request_uri;
+    }
+    ```
+3.  Reload Nginx and confirm you can reach the service at `https://medical-automation.example.com` from client machines.
+4.  If you enable the snippet admin API, require the same HTTPS endpoint so the admin token is never sent in plaintext.
 
 ## Monitoring and Telemetry
 
