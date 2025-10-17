@@ -2,12 +2,24 @@
 
 This guide provides step-by-step instructions for deploying the Medical Automation Suite, which includes the **Medical Phrase Client** and the **Snippet Expander**.
 
+## Security Hardening Overview
+
+To keep the deployment resilient, follow these five guardrails:
+
+1. **Isolate the services.** Run them under a dedicated Unix account with no shell access and ownership restricted to the project directory and database files.
+2. **Pin & patch dependencies.** Python requirements are now version-pinned. Schedule a recurring (e.g., monthly) reminder to review `pip list --outdated` and update the pinned versions after testing.
+3. **Add telemetry.** Both services write structured logs to `logs/medical_automation.log` by default (override via `MEDICAL_AUTOMATION_LOG_DIR`). Review this log for crashes or suspicious traffic.
+4. **Threat-model the simplest abuse.** The snippet management API now requires an explicit opt-in (`SNIPPET_ADMIN_ENABLED=1`) and a strong `SNIPPET_ADMIN_TOKEN` header to prevent drive-by edits.
+5. **Minimize scope.** Keep only the endpoints you need. Leave the snippet admin API disabled unless you are actively managing snippets, and keep the Flask development server bound to `127.0.0.1` when reverse-proxying.
+
 ## Dependency Management
 
-This project uses two separate files to manage dependencies for the server and the client:
+This project uses two separate files to manage dependencies for the server and the client. All dependencies are pinned to known-good versions so deployments are reproducible:
 
 -   `server_requirements.txt`: Contains packages needed only for the server (e.g., `Flask`).
 -   `requirements.txt`: Contains packages needed for the client applications on Windows (e.g., `pynput`, `pywebview`).
+
+> **Monthly patch routine:** With your virtual environment activated, run `pip list --outdated` on both the server and client machines. Test upgrades in a staging environment, then update the pinned versions in these files so you can deploy safely.
 
 ## 1. Server Deployment (Raspberry Pi)
 
@@ -18,27 +30,42 @@ The server component runs on a Raspberry Pi or any Linux machine on your network
 - Python 3 installed.
 - Network connectivity between the server and client machines.
 
-### Step 1: Copy Project Files to Server
-Copy the necessary server files to a directory on your Raspberry Pi. This includes the server script, requirements, and the SQL data files.
+### Step 0: Create a dedicated service account and directory
+To isolate the automation services, create a system user with no interactive shell and a locked-down home. The remainder of the guide assumes the files live in `/opt/medical_automation` and are owned by this user.
 
 ```bash
-# Example using scp from your local machine
-scp server.py server_requirements.txt SQL2.sql snippets_data.sql pi@<raspberry_pi_ip>:/home/pi/medical_automation/
+sudo adduser --system --group --home /opt/medical_automation --shell /usr/sbin/nologin medauto
+sudo mkdir -p /opt/medical_automation
+sudo chown medauto:medauto /opt/medical_automation
+```
+
+### Step 1: Copy Project Files to Server
+Copy the necessary server files to the Raspberry Pi, then move them into `/opt/medical_automation` so they are owned by the `medauto` account. This includes the server script, requirements, and the SQL data files.
+
+```bash
+# Example using scp from your local machine (copy to a staging folder)
+scp server.py server_requirements.txt SQL2.sql snippets_data.sql pi@<raspberry_pi_ip>:/tmp/medical_automation/
+
+# On the Raspberry Pi
+ssh pi@<raspberry_pi_ip>
+sudo rsync -av /tmp/medical_automation/ /opt/medical_automation/
+sudo chown -R medauto:medauto /opt/medical_automation
 ```
 
 ### Step 2: Set Up Python Virtual Environment
 Using a virtual environment is highly recommended to manage dependencies.
 
-1.  **Connect to your Raspberry Pi** (e.g., via SSH) and navigate to your project directory:
+1.  **Connect to your Raspberry Pi** (e.g., via SSH), elevate to the `medauto` account, and navigate to the project directory:
     ```bash
-    cd /home/pi/medical_automation
+    sudo -u medauto -H bash
+    cd /opt/medical_automation
     ```
 
 2.  **Create a virtual environment**:
     ```bash
     python3 -m venv venv
     ```
-    This creates a `venv` folder in your project directory.
+    This creates a `venv` folder in your project directory owned by `medauto`.
 
 3.  **Activate the virtual environment**:
     ```bash
@@ -64,7 +91,7 @@ The server uses two separate databases.
 
     Run the following command on your Raspberry Pi:
     ```bash
-    sqlite3 /home/pi/medical_automation/snippets.db < /home/pi/medical_automation/snippets_data.sql
+    sudo -u medauto sqlite3 /opt/medical_automation/snippets.db < /opt/medical_automation/snippets_data.sql
     ```
     This command will delete any existing snippets and populate the table with a fresh set from your SQL file.
 
@@ -85,13 +112,40 @@ To ensure the unified server runs automatically on boot, we will create a `syste
 
     [Service]
     Type=simple
-    User=pi
-    WorkingDirectory=/home/pi/medical_automation
-    ExecStart=/home/pi/medical_automation/venv/bin/python /home/pi/medical_automation/server.py
+    User=medauto
+    Group=medauto
+    WorkingDirectory=/opt/medical_automation
+    EnvironmentFile=/etc/medical_automation.env
+    ExecStart=/opt/medical_automation/venv/bin/python /opt/medical_automation/server.py
     Restart=always
+    NoNewPrivileges=yes
+    ProtectSystem=strict
+    ProtectHome=yes
+    PrivateTmp=yes
+    ReadWritePaths=/opt/medical_automation
 
     [Install]
     WantedBy=multi-user.target
+    ```
+
+3.  Create an environment file to store secrets and runtime settings referenced above:
+    ```bash
+    sudo install -o root -g root -m 640 /dev/null /etc/medical_automation.env
+    sudo nano /etc/medical_automation.env
+    ```
+    Recommended contents:
+    ```ini
+    # Disable snippet admin endpoints unless you explicitly opt in
+    SNIPPET_ADMIN_ENABLED=0
+    # Generate a strong random token if/when you enable admin access
+    SNIPPET_ADMIN_TOKEN=
+    # Optional: store logs outside the app directory
+    MEDICAL_AUTOMATION_LOG_DIR=/var/log/medical_automation
+    ```
+    If you set `MEDICAL_AUTOMATION_LOG_DIR`, create the directory and give ownership to `medauto`:
+    ```bash
+    sudo mkdir -p /var/log/medical_automation
+    sudo chown medauto:medauto /var/log/medical_automation
     ```
 
 ### Step 6: Enable and Start the Service
@@ -111,6 +165,32 @@ To ensure the unified server runs automatically on boot, we will create a `syste
     ```bash
     sudo systemctl status medical-server.service
     ```
+
+## Monitoring and Telemetry
+
+-   **Application logs**: By default both services log to `logs/medical_automation.log` inside the project directory. To inspect recent activity:
+    ```bash
+    sudo -u medauto tail -f /opt/medical_automation/logs/medical_automation.log
+    ```
+-   **Systemd journal**: For aggregated service output, continue using `journalctl -u medical-server.service`.
+-   **Crash investigations**: Look for lines tagged `ERROR` or `WARNING`—they will include stack traces or the client's IP when admin API requests fail.
+
+## Securing Snippet Administration
+
+-   The `/snippets` POST/PUT/DELETE endpoints are disabled by default. To enable them temporarily, edit `/etc/medical_automation.env` and set:
+    ```ini
+    SNIPPET_ADMIN_ENABLED=1
+    SNIPPET_ADMIN_TOKEN=replace-with-a-long-random-string
+    ```
+    Restart the service afterwards.
+-   Clients must send the token in the `X-Admin-Token` header. Example with `curl`:
+    ```bash
+    curl -X POST http://127.0.0.1:5000/snippets \
+      -H "Content-Type: application/json" \
+      -H "X-Admin-Token: $SNIPPET_ADMIN_TOKEN" \
+      -d '{"abbreviation": "bp", "phrase": "Blood pressure"}'
+    ```
+-   When administration tasks are complete, reset `SNIPPET_ADMIN_ENABLED=0` and restart the service to reduce the exposed attack surface.
 
 ## 2. Client Deployment (Windows)
 
@@ -275,10 +355,10 @@ Look for a `Traceback` (Python error) in the output. This will tell you exactly 
 
 #### Step 2: Common Causes and Solutions
 
--   **Database Errors**: The script might be failing to connect to or initialize the `snippets.db` database. Ensure the `snippets.db` file and the directory containing it are owned by the `pi` user and have the correct permissions.
+-   **Database Errors**: The script might be failing to connect to or initialize the `snippets.db` database. Ensure the `snippets.db` file and the directory containing it are owned by the `medauto` user and have the correct permissions.
     ```bash
     # To fix permissions in your project directory
-    sudo chown -R pi:pi /home/pi/medical_automation
+    sudo chown -R medauto:medauto /opt/medical_automation
     ```
 
 -   **Syntax Errors**: A simple typo in `server.py` can cause it to fail on startup. The `journalctl` log will show the exact line number of the error.
@@ -300,7 +380,7 @@ First, confirm the exact name and location of your server script on the Raspberr
 
 1.  Connect to your Raspberry Pi and navigate to the project directory:
     ```bash
-    cd /home/pi/medical_automation
+    cd /opt/medical_automation
     ```
 
 2.  List the files in the directory:
@@ -320,7 +400,7 @@ Next, ensure the `ExecStart` path in your service file matches the actual path a
     ```
 
 2.  Check the `ExecStart` line. For example:
-    `ExecStart=/home/pi/medical_automation/venv/bin/python /home/pi/medical_automation/server.py`
+    `ExecStart=/opt/medical_automation/venv/bin/python /opt/medical_automation/server.py`
 
 3.  If the path or filename is incorrect, edit the service file:
     ```bash
