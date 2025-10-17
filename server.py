@@ -7,14 +7,84 @@ import sqlite3
 import json
 import os
 import sys
+import logging
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
+from hmac import compare_digest
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import urllib.parse
-import traceback
 import datetime
 from threading import Thread
 
 # Flask imports for snippet server
 from flask import Flask, jsonify, request
+
+
+BASE_DIR = Path(__file__).resolve().parent
+
+
+def configure_logging():
+    """Configure application-wide logging with rotation."""
+    log_dir = Path(os.environ.get("MEDICAL_AUTOMATION_LOG_DIR", BASE_DIR / "logs"))
+    try:
+        log_dir.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        # Fall back to base directory if we cannot create the requested folder
+        log_dir = BASE_DIR
+    log_path = log_dir / "medical_automation.log"
+
+    logger = logging.getLogger("medical_automation")
+    if logger.handlers:
+        return logger
+
+    logger.setLevel(logging.INFO)
+    formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+
+    file_handler = RotatingFileHandler(log_path, maxBytes=1_000_000, backupCount=5)
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(formatter)
+    logger.addHandler(stream_handler)
+
+    logger.debug("Logging configured. Writing to %s", log_path)
+    return logger
+
+
+logger = configure_logging()
+
+
+def _admin_feature_enabled():
+    value = os.environ.get("SNIPPET_ADMIN_ENABLED", "0").strip().lower()
+    return value in {"1", "true", "yes", "on"}
+
+
+SNIPPET_ADMIN_TOKEN = os.environ.get("SNIPPET_ADMIN_TOKEN")
+SNIPPET_ADMIN_ENABLED = _admin_feature_enabled()
+
+
+def require_snippet_admin():
+    """Validate whether a request is allowed to perform snippet mutations."""
+    if not SNIPPET_ADMIN_ENABLED:
+        logger.warning(
+            "Blocked snippet modification attempt from %s because admin API is disabled.",
+            request.remote_addr,
+        )
+        return False, (jsonify({"error": "Snippet administration API is disabled"}), 403)
+
+    if not SNIPPET_ADMIN_TOKEN:
+        logger.error("Snippet administration enabled but SNIPPET_ADMIN_TOKEN is not set.")
+        return False, (jsonify({"error": "Server misconfiguration"}), 500)
+
+    provided_token = request.headers.get("X-Admin-Token") or request.args.get("token")
+    if not provided_token or not compare_digest(provided_token, SNIPPET_ADMIN_TOKEN):
+        logger.warning(
+            "Unauthorized snippet admin request from %s", request.remote_addr
+        )
+        return False, (jsonify({"error": "Unauthorized"}), 401)
+
+    return True, None
 
 # --- Snippet Server (Flask App on port 5000) ---
 snippet_app = Flask(__name__)
@@ -42,7 +112,7 @@ def init_snippet_db():
         ''')
         conn.commit()
         conn.close()
-        print("✓ Banco de dados de snippets inicializado.")
+        logger.info("Snippet database initialized at %s", SNIPPET_DATABASE)
 
 @snippet_app.route('/health', methods=['GET'])
 def health_check():
@@ -68,6 +138,10 @@ def get_all_snippets_full():
 @snippet_app.route('/snippets', methods=['POST'])
 def create_snippet():
     """Create a new snippet."""
+    is_allowed, response = require_snippet_admin()
+    if not is_allowed:
+        return response
+
     data = request.get_json()
     if not data or 'abbreviation' not in data or 'phrase' not in data:
         return jsonify({"error": "Missing abbreviation or phrase"}), 400
@@ -80,11 +154,16 @@ def create_snippet():
         return jsonify({"error": "Abbreviation already exists"}), 409
     finally:
         conn.close()
+    logger.info("Snippet created: %s", data['abbreviation'])
     return jsonify({"message": "Snippet created successfully"}), 201
 
 @snippet_app.route('/snippets/<path:abbreviation>', methods=['PUT'])
 def update_snippet(abbreviation):
     """Update an existing snippet."""
+    is_allowed, response = require_snippet_admin()
+    if not is_allowed:
+        return response
+
     data = request.get_json()
     if not data or 'phrase' not in data:
         return jsonify({"error": "Missing phrase"}), 400
@@ -93,15 +172,21 @@ def update_snippet(abbreviation):
     conn.execute('UPDATE snippets SET phrase = ? WHERE abbreviation = ?', (data['phrase'], abbreviation))
     conn.commit()
     conn.close()
+    logger.info("Snippet updated: %s", abbreviation)
     return jsonify({"message": "Snippet updated successfully"})
 
 @snippet_app.route('/snippets/<path:abbreviation>', methods=['DELETE'])
 def delete_snippet(abbreviation):
     """Delete a snippet."""
+    is_allowed, response = require_snippet_admin()
+    if not is_allowed:
+        return response
+
     conn = get_snippet_db_connection()
     conn.execute('DELETE FROM snippets WHERE abbreviation = ?', (abbreviation,))
     conn.commit()
     conn.close()
+    logger.info("Snippet deleted: %s", abbreviation)
     return jsonify({"message": "Snippet deleted successfully"})
 
 # --- End of Snippet Server ---
@@ -161,12 +246,12 @@ class MedicalAutomationServer:
     def verify_database(self, rebuilt=False):
         """Verificar se banco de dados existe e tem dados"""
         if not os.path.exists(self.db_path):
-            print(f"AVISO: Banco de dados não encontrado em {self.db_path}")
-            print("Tentando criar automaticamente a partir do arquivo SQL de referência...")
+            logger.warning("Database not found at %s", self.db_path)
+            logger.info("Attempting automatic creation from SQL reference file...")
             if self.bootstrap_database(overwrite=False):
                 self.verify_database(rebuilt=True)
                 return
-            print("ERRO: Não foi possível localizar ou criar o banco de dados.")
+            logger.error("Unable to locate or create database at %s", self.db_path)
             sys.exit(1)
 
         try:
@@ -178,11 +263,11 @@ class MedicalAutomationServer:
                 if not rebuilt and self.bootstrap_database(overwrite=True):
                     self.verify_database(rebuilt=True)
                     return
-                print("AVISO: Banco de dados vazio")
+                logger.warning("Database at %s is empty", self.db_path)
             else:
-                print(f"✓ Banco de dados OK: {count} frases encontradas")
+                logger.info("Database OK at %s with %s entries", self.db_path, count)
         except Exception as e:
-            print(f"ERRO no banco de dados: {e}")
+            logger.exception("Database error while verifying %s", self.db_path)
             if not rebuilt and self.bootstrap_database(overwrite=True):
                 self.verify_database(rebuilt=True)
                 return
@@ -192,7 +277,7 @@ class MedicalAutomationServer:
         """Cria o banco a partir de um arquivo SQL se disponível."""
         sql_candidates = self.find_sql_candidates()
         if not sql_candidates:
-            print("Nenhum arquivo SQL de referência encontrado para criar o banco de dados.")
+            logger.error("No SQL reference file found to create the database.")
             return False
 
         target_dir = os.path.dirname(self.db_path)
@@ -200,14 +285,14 @@ class MedicalAutomationServer:
             try:
                 os.makedirs(target_dir, exist_ok=True)
             except OSError as err:
-                print(f"Erro ao criar diretório do banco de dados: {err}")
+                logger.exception("Failed to create database directory %s", target_dir)
                 return False
 
         if overwrite and os.path.exists(self.db_path):
             try:
                 os.remove(self.db_path)
             except OSError as err:
-                print(f"Não foi possível remover o banco de dados antigo: {err}")
+                logger.exception("Failed to remove old database at %s", self.db_path)
                 return False
 
         for sql_path in sql_candidates:
@@ -216,10 +301,10 @@ class MedicalAutomationServer:
                     script = sql_file.read()
                 with sqlite3.connect(self.db_path) as conn:
                     conn.executescript(script)
-                print(f"✓ Banco de dados criado em {self.db_path} a partir de {sql_path}")
+                logger.info("Database created at %s from %s", self.db_path, sql_path)
                 return True
             except Exception as err:
-                print(f"Falha ao criar banco de dados a partir de {sql_path}: {err}")
+                logger.exception("Failed to create database from %s", sql_path)
 
         return False
 
@@ -262,7 +347,7 @@ class MedicalAutomationServer:
             conn.close()
             return categorias
         except Exception as e:
-            print(f"Erro ao buscar categorias: {e}")
+            logger.exception("Failed to fetch categories")
             return []
 
     def get_subcategorias(self, categoria_principal):
@@ -277,7 +362,7 @@ class MedicalAutomationServer:
             conn.close()
             return subcategorias
         except Exception as e:
-            print(f"Erro ao buscar subcategorias: {e}")
+            logger.exception("Failed to fetch subcategories for %s", categoria_principal)
             return []
 
     def get_frases(self, categoria_principal=None, subcategoria=None):
@@ -312,7 +397,7 @@ class MedicalAutomationServer:
             conn.close()
             return frases
         except Exception as e:
-            print(f"Erro ao buscar frases: {e}")
+            logger.exception("Failed to fetch phrases")
             return []
 
 class WebRequestHandler(BaseHTTPRequestHandler):
@@ -322,7 +407,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
 
     def log_message(self, format, *args):
         """Suprimir logs desnecessarios"""
-        pass
+        logger.info("HTTP request from %s: %s", self.address_string(), format % args)
 
     def do_GET(self):
         """Processar requisicoes GET"""
@@ -363,8 +448,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
 
             self.send_error(404, "Página não encontrada")
         except Exception as e:
-            print(f"Erro na requisição {self.path}: {e}")
-            traceback.print_exc()
+            logger.exception("Error processing request %s", self.path)
             self.send_error(500, "Erro interno do servidor")
 
     def send_json_response(self, data):
@@ -378,7 +462,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             json_data = json.dumps(data, ensure_ascii=False, indent=2)
             self.wfile.write(json_data.encode('utf-8'))
         except Exception as e:
-            print(f"Erro ao enviar JSON: {e}")
+            logger.exception("Failed to send JSON response")
             self.send_error(500, "Erro ao processar dados")
 
     def send_medical_interface(self):
@@ -391,7 +475,7 @@ class WebRequestHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(html_content.encode('utf-8'))
         except Exception as e:
-            print(f"Erro ao enviar HTML: {e}")
+            logger.exception("Failed to send HTML response")
             self.send_error(500, "Erro ao carregar interface")
 
     def get_html_template(self):
@@ -1179,23 +1263,27 @@ def run_medical_server(db_path):
 
     server_address = ('', 8080)
     httpd = HTTPServer(server_address, CustomWebRequestHandler)
-    print("✓ Servidor de frases médicas rodando em http://localhost:8080")
+    logger.info("Medical phrases server running on http://localhost:8080")
     httpd.serve_forever()
 
 def run_snippet_server():
     """Runs the snippet server on port 5000."""
     init_snippet_db()
-    print("✓ Servidor de snippets pronto para produção em http://localhost:5000")
-    print("⚠️ Atenção: Não utilize o servidor Flask embutido em produção. Use Gunicorn ou outro WSGI server.")
-    print("Exemplo para produção: gunicorn -w 4 -b 0.0.0.0:5000 server:snippet_app")
+    logger.info("Snippet server ready on http://localhost:5000")
+    logger.warning(
+        "Do not use the built-in Flask server in production. Use Gunicorn or another WSGI server."
+    )
+    logger.info("Production example: gunicorn -w 4 -b 0.0.0.0:5000 server:snippet_app")
     # snippet_app.run(host='0.0.0.0', port=5000, threaded=True)  # Somente para desenvolvimento
     snippet_app.run(host='127.0.0.1', port=5000)
 def run_all_servers():
     db_path = os.environ.get('AUTOMATION_DB_PATH') or os.environ.get('DB_PATH')
-    
+    logger.info("Starting medical automation services")
+
     # Run medical server in a background thread
     medical_thread = Thread(target=run_medical_server, args=(db_path,), daemon=True)
     medical_thread.start()
+    logger.info("Medical phrases server thread started")
 
     # Run snippet server in the main thread
     run_snippet_server()
@@ -1203,10 +1291,3 @@ def run_all_servers():
 
 if __name__ == "__main__":
     run_all_servers()
-
-# Environment variables, paths, ports
-SNIPPET_DB_PATH = "snippets.db"
-MEDICAL_DB_PATH = "automation.db"
-SQL_BOOTSTRAP_FILE = "SQL2.sql"
-SNIPPET_PORT = 5000
-MEDICAL_PORT = 8080
