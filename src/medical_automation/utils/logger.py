@@ -31,10 +31,14 @@ def setup_logger(
     if not hasattr(logging, log_level_upper):
         raise ValueError(f"Invalid log level: {log_level}")
     logger.setLevel(getattr(logging, log_level_upper))
-    elif isinstance(level, str) and level.strip() == "":
+    
+    if isinstance(level, str) and level.strip() == "":
         raise ValueError("Log level cannot be an empty string.")
-    else:
-        log_level = level
+    
+    if isinstance(level, str) and level.strip() == "":
+        raise ValueError("Log level cannot be an empty string.")
+    
+    log_level = level or config.LOG_LEVEL
     logger.setLevel(getattr(logging, log_level.upper()))
     
     # Remove existing handlers to avoid duplicates

@@ -5,4 +5,4 @@ __author__ = "Medical Automation Team"
 
 from .config import config
 
-__all__ = ["config", "__version__", "__author__"]
+__all__ = []
