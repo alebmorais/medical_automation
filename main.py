@@ -123,7 +123,7 @@ Exemplos de uso:
     try:
         if args.mode == 'medical':
             if args.debug:
-                print(f"Iniciando servidor de frases médicas na porta {args.medical_port}...")
+                print("Iniciando servidor de frases médicas...")
             else:
                 print("Iniciando servidor de frases médicas...")
             run_medical_server(
