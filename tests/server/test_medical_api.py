@@ -22,7 +22,7 @@ def test_add_phrase_and_search_then_delete(app_client):
     r = app_client.get("/medical/search?q=murmurs")
     assert r.status_code == 200
     results = r.get_json()
-    assert any("No murmurs" == x["frase"] for x in results)
+    if not any("No murmurs" == x["frase"] for x in results): raise ValueError("Expected phrase not found in search results")
 
     # Find id of the inserted phrase
     pid = next(x["id"] for x in results if x["frase"] == "No murmurs")
