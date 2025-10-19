@@ -51,5 +51,5 @@ def run_snippet_server(host: str = '127.0.0.1', port: int = None, debug: bool = 
 
 
 if __name__ == "__main__":
-    # Run in development mode if executed directly
-    run_snippet_server(debug=True)
+    # Run in safe mode if executed directly (debug disabled by default)
+    run_snippet_server(debug=False)
