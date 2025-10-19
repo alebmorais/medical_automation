@@ -44,7 +44,7 @@ def run_medical_server(db_path: str = None, host: str = '', port: int = None):
     server_address = (host, port)
     httpd = HTTPServer(server_address, handler_class)
     
-    print(f"✓ Servidor de frases médicas rodando em http://localhost:{port}")
+    print("✓ Servidor de frases médicas iniciado com sucesso.")
     
     # Start serving
     try:
