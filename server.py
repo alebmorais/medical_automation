@@ -78,7 +78,7 @@ def require_snippet_admin():
         logger.error("Snippet administration enabled but SNIPPET_ADMIN_TOKEN is not set.")
         return False, (jsonify({"error": "Server misconfiguration"}), 500)
 
-    provided_token = request.headers.get("X-Admin-Token") or request.args.get("token")
+    provided_token = request.headers.get("X-Admin-Token")
     if not provided_token or not compare_digest(provided_token, SNIPPET_ADMIN_TOKEN):
         logger.warning(
             "Unauthorized snippet admin request from %s", request.remote_addr
