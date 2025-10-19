@@ -2,6 +2,9 @@
 
 This guide provides step-by-step instructions for deploying the Medical Automation Suite, which includes the **Medical Phrase Client** and the **Snippet Expander**.
 
+> **Looking for the streamlined production bundle?**
+> The `clean_suite/` directory contains only the files that are actively used in the current deployment (server script, SQL data, and Windows clients). Copy that folder to start from a minimal, distraction-free snapshot of the project.
+
 ## Security Hardening Overview
 
 To keep the deployment resilient, follow these six guardrails:

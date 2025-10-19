@@ -1,0 +1,813 @@
+#!/usr/bin/env python3
+# Cliente Desktop para Windows - Automação Médica
+# Interface nativa com fundo azul escuro, navegação por voz, atalhos e cliques
+# Detecta automaticamente se está no Windows e só ativa neste sistema
+import platform
+import sys
+import time
+import tkinter as tk
+import traceback
+from tkinter import ttk
+from urllib import request as urllib_request
+import urllib.parse
+
+# Função utilitária para lidar com pausas...
+def pause_for_user(prompt, delay_seconds=3):
+    """Exibe uma mensagem de pausa não exigida pelo usuário."""
+    try:
+        if sys.stdin and sys.stdin.isatty():
+            input(prompt)
+            return
+    except (EOFError, RuntimeError):
+        pass
+
+    # Ambiente não interativo: apenas informar e aguardar brevemente para que
+    # o usuário leia a mensagem.
+    message = prompt.strip() or "Pressione Enter para continuar..."
+    print(message)
+    time.sleep(max(delay_seconds, 0))
+
+# Tentar importar bibliotecas opcionais
+try:
+    import requests
+    REQUESTS_AVAILABLE = True
+except ImportError:
+    REQUESTS_AVAILABLE = False
+    requests = None # Keep this if you check for `requests` later
+
+try:
+    import pyautogui
+    AUTOGUI_AVAILABLE = True
+except ImportError:
+    AUTOGUI_AVAILABLE = False
+    pyautogui = None # Define as None if it fails to import
+
+try:
+    import pyperclip
+    PYPERCLIP_AVAILABLE = True
+except ImportError:
+    PYPERCLIP_AVAILABLE = False
+    pyperclip = None
+
+try:
+    import webview
+    WEBVIEW_AVAILABLE = True
+except ImportError:
+    WEBVIEW_AVAILABLE = False
+    webview = None
+
+try:
+    from pynput import keyboard, mouse
+    PYNPUT_AVAILABLE = True
+except ImportError:
+    PYNPUT_AVAILABLE = False
+    keyboard = None
+    mouse = None
+
+
+class WindowsDesktopClient:
+    def __init__(self):
+        """Inicializar o cliente desktop e configurar dependências."""
+        # Verificar se está no Windows
+        if platform.system() != "Windows":
+            print("Sistema não é Windows. Cliente desktop não será iniciado.")
+            return
+
+        # Configurações
+        self.pi_url = "http://192.168.0.34:8080" # Corrected from http:/
+        
+        self.current_phrase = None
+        self.zoom_level = 1.0
+
+        # Dados
+        self.categories = []
+        self.subcategories = []
+        self.phrases = []
+        self.selected_category = None
+        self.selected_subcategory = None
+
+        # Interface
+        self.root = None
+        
+        
+        self.webview_window = None
+        self.ui_mode = None
+        self.pending_webview = False
+        self.force_legacy_ui = False
+        self.legacy_initialized = False
+
+        # Inicializar
+        
+        self.setup_gui()
+        if self.ui_mode == "legacy":
+            self.initialize_legacy_mode()
+
+    def initialize_legacy_mode(self):
+        """Ensure that legacy mode helpers are configured only once."""
+        if self.legacy_initialized:
+            return
+        self.setup_keyboard_shortcuts()
+        self.load_categories()
+        self.legacy_initialized = True
+
+    def setup_keyboard_shortcuts(self):
+        """Configurar atalhos de teclado globais usando HotKey para combinações."""
+        if not PYNPUT_AVAILABLE:
+            self.update_status(
+                "Atalhos de teclado desativados. Instale 'pynput' para habilitá-los."
+            )
+            return
+
+        def on_type_activate():
+            print("Atalho Ctrl+Alt+D ativado: Digitar frase.")
+            self.auto_type_phrase()
+
+        def on_copy_activate():
+            print("Atalho Ctrl+C ativado: Copiar frase.")
+            self.copy_phrase()
+
+        def on_minimize_activate():
+            print("Atalho Ctrl+Alt+M ativado: Minimizar/Restaurar.")
+            self.toggle_minimize()
+
+        # Definir os atalhos
+        hotkeys = {
+            '<ctrl>+<alt>+d': on_type_activate,
+            '<ctrl>+c': on_copy_activate,
+            '<ctrl>+<alt>m': on_minimize_activate,
+            '<ctrl>+=': self.zoom_in,
+            '<ctrl>+-': self.zoom_out,
+            '<ctrl>+0': self.reset_zoom,
+        }
+
+        # Iniciar o listener em uma thread separada
+        listener = keyboard.GlobalHotKeys(hotkeys)
+        listener.start()
+
+        self.update_status(
+            "Pronto. Atalhos: Ctrl+Alt+D (digitar), Ctrl+C (copiar), Ctrl+Alt+M (minimizar)."
+        )
+
+    def setup_gui(self):
+        """Criar interface do cliente."""
+        # Paleta comum para fallback/legado
+        self.colors = {
+            "bg_primary": "#1a237e",  # Azul escuro principal
+            "bg_secondary": "#283593",  # Azul médio
+            "bg_accent": "#3f51b5",  # Azul claro
+            "text_primary": "#ffffff",  # Branco
+            "text_secondary": "#e8eaf6",  # Branco levemente azulado
+            "button_active": "#4caf50",  # Verde
+            "button_hover": "#66bb6a",  # Verde claro
+            "border": "#5c6bc0",  # Azul para bordas
+        }
+
+        pi_reachable = self.is_pi_reachable()
+
+        if WEBVIEW_AVAILABLE and pi_reachable and not self.force_legacy_ui:
+            self.ui_mode = "webview"
+            self.webview_window = webview.create_window(
+                "Automação Médica",
+                self.pi_url,
+                width=1000,
+                height=700,
+                resizable=True,
+            )
+            return
+
+        # Necessário criar janela Tk para fallback ou interface legada
+        self.root = tk.Tk()
+        self.root.title("Automação Médica")
+        self.root.geometry("1000x700")
+        self.root.configure(bg=self.colors["bg_primary"])
+        self.root.attributes("-topmost", True)
+
+        if not pi_reachable:
+            self.ui_mode = "fallback"
+            self.build_offline_screen()
+            return
+
+        # Quando pywebview não está disponível, mantemos a UI Tk existente
+        if not WEBVIEW_AVAILABLE:
+            print(
+                "pywebview não foi encontrado. Utilizando interface Tkinter tradicional."
+            )
+
+        self.ui_mode = "legacy"
+
+        # Configurar estilo ttk apenas no modo legado
+        style = ttk.Style()
+        style.theme_use("clam")
+        style.configure("Dark.TFrame", background=self.colors["bg_primary"])
+        style.configure(
+            "Dark.TLabel",
+            background=self.colors["bg_primary"],
+            foreground=self.colors["text_primary"],
+            font=("Segoe UI", int(10 * self.zoom_level)),
+        )
+        style.configure(
+            "Title.TLabel",
+            background=self.colors["bg_primary"],
+            foreground=self.colors["text_primary"],
+            font=("Segoe UI", int(16 * self.zoom_level), "bold"),
+        )
+        style.configure(
+            "Dark.TButton",
+            background=self.colors["bg_accent"],
+            foreground=self.colors["text_primary"],
+            font=("Segoe UI", int(10 * self.zoom_level), "bold"),
+        )
+
+        self.create_header()
+        
+        self.create_navigation_area()
+        self.create_preview_area()
+        self.create_status_bar()
+
+        self.root.focus_set()
+        self.root.bind("<Escape>", lambda e: self.toggle_minimize())
+        self.root.bind("<F11>", lambda e: self.toggle_fullscreen())
+
+    def build_offline_screen(self):
+        """Exibir tela simples informando ausência de conexão."""
+        container = tk.Frame(self.root, bg=self.colors["bg_primary"])
+        container.pack(expand=True, fill=tk.BOTH, padx=40, pady=40)
+
+        title = tk.Label(
+            container,
+            text="Não foi possível acessar o Raspberry Pi.",
+            bg=self.colors["bg_primary"],
+            fg=self.colors["text_primary"],
+            font=("Segoe UI", 18, "bold"),
+            wraplength=600,
+            justify="center",
+        )
+        title.pack(pady=(0, 20))
+
+        instructions = (
+            "Verifique se o Raspberry Pi está ligado e conectado à rede. "
+            "Conecte o computador ao mesmo Wi-Fi ou cabo e tente novamente."
+        )
+        self.fallback_status_var = tk.StringVar(value=instructions)
+        status_label = tk.Label(
+            container,
+            textvariable=self.fallback_status_var,
+            bg=self.colors["bg_primary"],
+            fg=self.colors["text_secondary"],
+            font=("Segoe UI", 11),
+            wraplength=600,
+            justify="center",
+        )
+        status_label.pack(pady=(0, 20))
+
+        button_frame = tk.Frame(container, bg=self.colors["bg_primary"])
+        button_frame.pack()
+
+        retry_button = tk.Button(
+            button_frame,
+            text="Tentar novamente",
+            command=self.retry_connection,
+            bg=self.colors["button_active"],
+            fg=self.colors["text_primary"],
+            font=("Segoe UI", 11, "bold"),
+            padx=16,
+            pady=8,
+        )
+        retry_button.pack(side=tk.LEFT, padx=10)
+
+        close_button = tk.Button(
+            button_frame,
+            text="Fechar",
+            command=self.root.destroy,
+            bg=self.colors["bg_accent"],
+            fg=self.colors["text_primary"],
+            font=("Segoe UI", 11, "bold"),
+            padx=16,
+            pady=8,
+        )
+        close_button.pack(side=tk.LEFT, padx=10)
+
+        if not WEBVIEW_AVAILABLE:
+            note = tk.Label(
+                container,
+                text=(
+                    "Observação: instale o pacote 'pywebview' para carregar a interface "
+                    "web moderna diretamente no aplicativo."
+                ),
+                bg=self.colors["bg_primary"],
+                fg=self.colors["text_secondary"],
+                font=("Segoe UI", 10),
+                wraplength=600,
+                justify="center",
+            )
+            note.pack(pady=(20, 0))
+
+    def retry_connection(self):
+        """Tentar reconectar ao Pi e abrir a webview se possível."""
+        if not self.is_pi_reachable():
+            self.fallback_status_var.set(
+                "Ainda não foi possível conectar. Confira os cabos/rede e tente novamente."
+            )
+            return
+
+        if WEBVIEW_AVAILABLE:
+            self.fallback_status_var.set(
+                "Conexão restabelecida! Abrindo a interface web..."
+            )
+            self.root.after(200, self._open_webview_after_fallback)
+        else:
+            self.fallback_status_var.set(
+                "Conectado ao Pi! Instale o pacote 'pywebview' e reabra o aplicativo "
+                "para usar a interface moderna."
+            )
+
+    def _open_webview_after_fallback(self):
+        """Encerrar a janela Tk e preparar a webview."""
+        if not WEBVIEW_AVAILABLE:
+            return
+        self.pending_webview = True
+        self.force_legacy_ui = False
+        if self.root:
+            self.root.destroy()
+            self.root = None
+        self.webview_window = webview.create_window(
+            "Automação Médica",
+            self.pi_url,
+            width=1000,
+            height=700,
+            resizable=True,
+        )
+
+    def is_pi_reachable(self, timeout=3):
+        """Verificar se a URL do Pi responde."""
+        try:
+            if REQUESTS_AVAILABLE:
+                response = requests.get(self.pi_url, timeout=timeout)
+                return response.status_code < 500
+            with urllib_request.urlopen(self.pi_url, timeout=timeout) as response:
+                # http.client.HTTPResponse object has 'status' in Python 3.9+
+                # but 'getcode()' is a more compatible way to get it.
+                status = response.getcode() if hasattr(response, 'getcode') else getattr(response, "status", 200)
+                return 200 <= status < 500
+        except Exception as e:
+            print(f"Falha ao verificar a disponibilidade do Pi: {e}")
+            traceback.print_exc()
+            return False
+
+    def create_header(self):
+        """Criar cabeçalho"""
+        header_frame = tk.Frame(self.root, bg=self.colors["bg_secondary"], height=80)
+        header_frame.pack(fill=tk.X, padx=2, pady=2)
+        header_frame.pack_propagate(False)
+
+        # Título
+        self.title_label = tk.Label(
+            header_frame,
+            text="🏥 Automação Médica",
+            bg=self.colors["bg_secondary"],
+            fg=self.colors["text_primary"],
+            font=("Segoe UI", int(20 * self.zoom_level), "bold"),
+        )
+        self.title_label.pack(expand=True)
+
+        # Subtítulo
+        self.subtitle_label = tk.Label(
+            header_frame,
+            text="Neurologia",
+            bg=self.colors["bg_secondary"],
+            fg=self.colors["text_secondary"],
+            font=("Segoe UI", int(12 * self.zoom_level)),
+        )
+        self.subtitle_label.pack()
+
+    
+
+    def create_navigation_area(self):
+        """Criar área de navegação com 3 colunas"""
+        self.nav_frame = tk.Frame(self.root, bg=self.colors["bg_primary"])
+        self.nav_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+
+        # Configurar grid
+        self.nav_frame.grid_columnconfigure(0, weight=1)
+        self.nav_frame.grid_columnconfigure(1, weight=1)
+        self.nav_frame.grid_columnconfigure(2, weight=1)
+        self.nav_frame.grid_rowconfigure(0, weight=1)
+
+        # Coluna 1: Categorias
+        self.create_list_column(self.nav_frame, "📋 Categorias", 0, "categories")
+
+        # Coluna 2: Subcategorias
+        self.create_list_column(self.nav_frame, "📑 Subcategorias", 1, "subcategories")
+
+        # Coluna 3: Frases
+        self.create_list_column(self.nav_frame, "💬 Frases", 2, "phrases")
+
+    def create_list_column(self, parent, title, column, list_type):
+        """Criar uma coluna de lista"""
+        # Frame da coluna
+        col_frame = tk.Frame(
+            parent, bg=self.colors["bg_secondary"], relief="raised", bd=2
+        )
+        col_frame.grid(row=0, column=column, sticky="nsew", padx=2, pady=2)
+
+        # Título
+        title_label = tk.Label(
+            col_frame,
+            text=title,
+            bg=self.colors["bg_accent"],
+            fg=self.colors["text_primary"],
+            font=("Segoe UI", int(12 * self.zoom_level), "bold"),
+            pady=10,
+        )
+        title_label.pack(fill=tk.X)
+
+        # Listbox
+        listbox_frame = tk.Frame(col_frame, bg=self.colors["bg_secondary"])
+        listbox_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+        listbox = tk.Listbox(
+            listbox_frame,
+            bg=self.colors["bg_primary"],
+            fg=self.colors["text_primary"],
+            selectbackground=self.colors["bg_accent"],
+            selectforeground=self.colors["text_primary"],
+            font=("Segoe UI", int(10 * self.zoom_level)),
+            relief="flat",
+            bd=0,
+        )
+
+        scrollbar = tk.Scrollbar(listbox_frame, orient="vertical")
+        listbox.configure(yscrollcommand=scrollbar.set)
+        scrollbar.configure(command=listbox.yview)
+
+        listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        # Configurar eventos
+        if list_type == "categories":
+            self.categories_listbox = listbox
+            listbox.bind("<<ListboxSelect>>", self.on_category_select)
+        elif list_type == "subcategories":
+            self.subcategories_listbox = listbox
+            listbox.bind("<<ListboxSelect>>", self.on_subcategory_select)
+        elif list_type == "phrases":
+            self.phrases_listbox = listbox
+            listbox.bind("<<ListboxSelect>>", self.on_phrase_select)
+
+    def create_preview_area(self):
+        """Criar área de preview da frase"""
+        preview_frame = tk.Frame(
+            self.root, bg=self.colors["bg_secondary"], relief="raised", bd=2
+        )
+        preview_frame.pack(fill=tk.X, padx=10, pady=5)
+
+        # Título
+        self.preview_title = tk.Label(
+            preview_frame,
+            text="👁️ Preview da Frase Selecionada",
+            bg=self.colors["bg_secondary"],
+            fg=self.colors["text_primary"],
+            font=("Segoe UI", int(12 * self.zoom_level), "bold"),
+            pady=5,
+        )
+        self.preview_title.pack()
+
+        # Área de texto
+        text_frame = tk.Frame(preview_frame, bg=self.colors["bg_secondary"])
+        text_frame.pack(fill=tk.X, padx=10, pady=5)
+
+        self.preview_text = tk.Text(
+            text_frame,
+            height=6,
+            wrap=tk.WORD,
+            bg=self.colors["bg_primary"],
+            fg=self.colors["text_primary"],
+            font=("Consolas", int(10 * self.zoom_level)),
+            relief="flat",
+            bd=0,
+            state="disabled",
+        )
+
+        preview_scrollbar = tk.Scrollbar(text_frame, orient="vertical")
+        self.preview_text.configure(yscrollcommand=preview_scrollbar.set)
+        preview_scrollbar.configure(command=self.preview_text.yview)
+
+        self.preview_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        preview_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        # Botões de ação
+        buttons_frame = tk.Frame(preview_frame, bg=self.colors["bg_secondary"])
+        buttons_frame.pack(pady=10)
+
+        # Botão de digitar
+        self.type_button = tk.Button(
+            buttons_frame,
+            text="⌨️ Digitar Automaticamente (F5)",
+            bg=self.colors["button_active"],
+            fg=self.colors["text_primary"],
+            font=("Segoe UI", int(11 * self.zoom_level), "bold"),
+            command=self.auto_type_phrase,
+            relief="raised",
+            bd=2,
+            padx=20,
+            pady=8,
+        )
+        self.type_button.pack(side=tk.LEFT, padx=5)
+
+        # Botão de copiar
+        self.copy_button = tk.Button(
+            buttons_frame,
+            text="📋 Copiar para Clipboard",
+            bg=self.colors["bg_accent"],
+            fg=self.colors["text_primary"],
+            font=("Segoe UI", int(11 * self.zoom_level), "bold"),
+            command=self.copy_phrase,
+            relief="raised",
+            bd=2,
+            padx=20,
+            pady=8,
+        )
+        self.copy_button.pack(side=tk.LEFT, padx=5)
+
+    def create_status_bar(self):
+        """Criar barra de status"""
+        self.status_bar = tk.Label(
+            self.root,
+            text="Pronto - Conecte-se ao Pi Zero",
+            bg=self.colors["bg_accent"],
+            fg=self.colors["text_primary"],
+            font=("Segoe UI", int(9 * self.zoom_level)),
+            relief="sunken",
+            bd=1,
+            anchor="w",
+            padx=10,
+        )
+        self.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
+
+    def update_status(self, message):
+        """Atualizar a barra de status."""
+        if self.ui_mode == "legacy" and self.status_bar:
+            self.status_bar.config(text=message)
+        print(f"Status atualizado: {message}")
+
+    def zoom_in(self):
+        """Aumenta o zoom da interface."""
+        self.zoom_level = min(2.0, self.zoom_level + 0.1)
+        self.apply_zoom()
+        print(f"Zoom in: {self.zoom_level:.1f}")
+
+    def zoom_out(self):
+        """Diminui o zoom da interface."""
+        self.zoom_level = max(0.5, self.zoom_level - 0.1)
+        self.apply_zoom()
+        print(f"Zoom out: {self.zoom_level:.1f}")
+
+    def reset_zoom(self):
+        """Reseta o zoom para o padrão."""
+        self.zoom_level = 1.0
+        self.apply_zoom()
+        print("Zoom resetado")
+
+    def apply_zoom(self):
+        """Aplica o nível de zoom à interface atual."""
+        if self.ui_mode == "webview" and self.webview_window:
+            js_code = f"document.body.style.zoom = '{self.zoom_level}'"
+            self.webview_window.evaluate_js(js_code)
+        elif self.ui_mode == "legacy":
+            self._update_legacy_zoom()
+
+    def _update_legacy_zoom(self):
+        """Aplica o zoom na interface legada (Tkinter) atualizando as fontes."""
+        if not self.root:
+            return
+
+        # Atualizar estilos do ttk
+        style = ttk.Style()
+        style.configure("Dark.TLabel", font=("Segoe UI", int(10 * self.zoom_level)))
+        style.configure("Title.TLabel", font=("Segoe UI", int(16 * self.zoom_level), "bold"))
+        style.configure("Dark.TButton", font=("Segoe UI", int(10 * self.zoom_level), "bold"))
+
+        # Atualizar fontes de widgets específicos que não usam ttk Style
+        # Cabeçalho
+        self.title_label.config(font=("Segoe UI", int(20 * self.zoom_level), "bold"))
+        self.subtitle_label.config(font=("Segoe UI", int(12 * self.zoom_level)))
+
+        # Títulos das colunas
+        for col_frame in self.nav_frame.winfo_children():
+            if isinstance(col_frame, tk.Frame):
+                title_widget = col_frame.winfo_children()[0]
+                title_widget.config(font=("Segoe UI", int(12 * self.zoom_level), "bold"))
+
+        # Listboxes
+        self.categories_listbox.config(font=("Segoe UI", int(10 * self.zoom_level)))
+        self.subcategories_listbox.config(font=("Segoe UI", int(10 * self.zoom_level)))
+        self.phrases_listbox.config(font=("Segoe UI", int(10 * self.zoom_level)))
+
+        # Área de preview
+        self.preview_title.config(font=("Segoe UI", int(12 * self.zoom_level), "bold"))
+        self.preview_text.config(font=("Consolas", int(10 * self.zoom_level)))
+
+        # Botões de ação
+        self.type_button.config(font=("Segoe UI", int(11 * self.zoom_level), "bold"))
+        self.copy_button.config(font=("Segoe UI", int(11 * self.zoom_level), "bold"))
+
+        # Barra de status
+        self.status_bar.config(font=("Segoe UI", int(9 * self.zoom_level)))
+
+        self.update_status(f"Zoom aplicado: {self.zoom_level:.1f}x")
+
+    def on_category_select(self, event):
+        """Manipular seleção de categoria."""
+        selected = self.categories_listbox.curselection()
+        if not selected:
+            return
+        index = selected[0]
+        # The API returns a simple list of strings.
+        self.selected_category = self.categories_listbox.get(index)
+        self.load_subcategories()
+
+    def on_subcategory_select(self, event):
+        """Manipular seleção de subcategoria."""
+        selected = self.subcategories_listbox.curselection()
+        if not selected:
+            return
+        index = selected[0]
+        # The API returns a simple list of strings.
+        self.selected_subcategory = self.subcategories_listbox.get(index)
+        self.load_phrases()
+
+    def on_phrase_select(self, event):
+        """Manipular seleção de frase."""
+        selected_indices = self.phrases_listbox.curselection()
+        if not selected_indices:
+            return
+        
+        # Find the full phrase object that matches the selected name
+        selected_name = self.phrases_listbox.get(selected_indices[0])
+        self.current_phrase = next((p for p in self.phrases if p.get("nome") == selected_name), None)
+        
+        self.show_preview()
+
+    def load_categories(self):
+        """Carregar categorias da API e atualizar a lista."""
+        if not REQUESTS_AVAILABLE:
+            self.update_status("Erro: A biblioteca 'requests' é necessária para carregar dados.")
+            return
+        try:
+            # Corrected URL to use the /api/ prefix
+            response = requests.get(f"{self.pi_url}/api/categorias")
+            response.raise_for_status()
+            # The server returns a simple list of strings
+            self.categories = response.json()
+            self.update_categories_listbox()
+            self.update_status("Categorias carregadas.")
+        except Exception as e:
+            self.update_status(f"Erro ao carregar categorias: {e}")
+            traceback.print_exc()
+
+    def update_categories_listbox(self):
+        """Atualizar Listbox de categorias."""
+        if not self.categories_listbox:
+            return
+        self.categories_listbox.delete(0, tk.END)
+        for category in self.categories:
+            # The API returns a list of strings, not objects
+            self.categories_listbox.insert(tk.END, category)
+
+    def load_subcategories(self):
+        """Carregar subcategorias da API e atualizar a lista."""
+        if not self.selected_category:
+            return
+        if not REQUESTS_AVAILABLE:
+            self.update_status("Erro: A biblioteca 'requests' é necessária para carregar dados.")
+            return
+        try:
+            # Corrected URL to use the /api/ prefix and proper encoding
+            encoded_category = urllib.parse.quote(self.selected_category)
+            response = requests.get(
+                f"{self.pi_url}/api/subcategorias/{encoded_category}"
+            )
+            response.raise_for_status()
+            self.subcategories = response.json()
+            self.update_subcategories_listbox()
+            self.update_status("Subcategorias carregadas.")
+        except Exception as e:
+            self.update_status(f"Erro ao carregar subcategorias: {e}")
+            traceback.print_exc()
+
+    def update_subcategories_listbox(self):
+        """Atualizar Listbox de subcategorias."""
+        if not self.subcategories_listbox:
+            return
+        self.subcategories_listbox.delete(0, tk.END)
+        for subcategory in self.subcategories:
+            # The API returns a list of strings, not objects
+            self.subcategories_listbox.insert(tk.END, subcategory)
+
+    def load_phrases(self):
+        """Carregar frases da API e atualizar a lista."""
+        if not self.selected_subcategory:
+            return
+        if not REQUESTS_AVAILABLE:
+            self.update_status("Erro: A biblioteca 'requests' é necessária para carregar dados.")
+            return
+        try:
+            # Corrected to use query parameters as the API expects
+            params = {
+                'categoria': self.selected_category,
+                'subcategoria': self.selected_subcategory
+            }
+            response = requests.get(f"{self.pi_url}/api/frases", params=params)
+            response.raise_for_status()
+            self.phrases = response.json()
+            self.update_phrases_listbox()
+            self.update_status("Frases carregadas.")
+        except Exception as e:
+            self.update_status(f"Erro ao carregar frases: {e}")
+            traceback.print_exc()
+
+    def update_phrases_listbox(self):
+        """Atualizar Listbox de frases."""
+        if not self.phrases_listbox:
+            return
+        self.phrases_listbox.delete(0, tk.END)
+        for phrase in self.phrases:
+            # The API returns objects with 'nome' and 'conteudo'
+            self.phrases_listbox.insert(tk.END, phrase.get("nome", "Frase sem nome"))
+
+    def show_preview(self):
+        """Exibir a frase selecionada na área de preview."""
+        if not self.current_phrase:
+            return
+        self.preview_text.config(state="normal")
+        self.preview_text.delete(1.0, tk.END)
+        # The phrase object has the full text in the 'conteudo' key
+        self.preview_text.insert(tk.END, self.current_phrase.get("conteudo", ""))
+        self.preview_text.config(state="disabled")
+
+    def auto_type_phrase(self):
+        """Digitar a frase selecionada automaticamente."""
+        if not self.current_phrase:
+            return
+        if not AUTOGUI_AVAILABLE:
+            self.update_status("Erro: A biblioteca 'pyautogui' é necessária para digitar.")
+            return
+
+        self.update_status("Digitando frase...")
+        # The phrase object has the full text in the 'conteudo' key
+        text = self.current_phrase.get("conteudo", "")
+        delay = 0.1  # Atraso entre as teclas (em segundos)
+
+        # Usar pyautogui para digitar a frase
+        try:
+            pyautogui.write(text, interval=delay)
+            self.update_status("Frase digitada.")
+        except Exception as e:
+            self.update_status(f"Erro ao digitar frase: {e}")
+            traceback.print_exc()
+
+    def copy_phrase(self):
+        """Copiar a frase selecionada para o clipboard."""
+        if not self.current_phrase:
+            return
+        if not PYPERCLIP_AVAILABLE:
+            self.update_status("Erro: A biblioteca 'pyperclip' é necessária para copiar.")
+            return
+        try:
+            # Usar clipboard padrão do sistema
+            # The phrase object has the full text in the 'conteudo' key
+            pyperclip.copy(self.current_phrase.get("conteudo", ""))
+            self.update_status("Frase copiada para o clipboard.")
+        except Exception as e:
+            self.update_status(f"Erro ao copiar frase: {e}")
+            traceback.print_exc()
+
+    def toggle_minimize(self):
+        """Minimizar ou restaurar a janela."""
+        if not self.root:
+            return
+        if self.root.state() == "normal":
+            self.root.iconify()
+            self.update_status("Janela minimizada.")
+        else:
+            self.root.deiconify()
+            self.update_status("Janela restaurada.")
+
+    def toggle_fullscreen(self):
+        """Alternar entre tela cheia e modo janela."""
+        is_fullscreen = self.root.attributes("-fullscreen")
+        self.root.attributes("-fullscreen", not is_fullscreen)
+        self.update_status("Modo tela cheia ativado." if not is_fullscreen else "Modo janela ativado.")
+
+    def run(self):
+        """Iniciar o cliente desktop."""
+        if self.ui_mode == "webview" and self.webview_window:
+            webview.start()
+        elif self.root:
+            self.root.mainloop()
+
+
+# Executar apenas se for o script principal
+if __name__ == "__main__":
+    client = WindowsDesktopClient()
+    client.run()
