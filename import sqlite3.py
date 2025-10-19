@@ -1,6 +1,7 @@
 import sqlite3
 from flask import Flask, jsonify, request
 import datetime
+import logging
 
 app = Flask(__name__)
 DATABASE = 'snippets.db'
@@ -37,7 +38,8 @@ def health_check():
         conn.close()
         db_status = "connected"
     except Exception as e:
-        db_status = f"error: {e}"
+        logging.exception("Database connection error in health_check")
+        db_status = "error: unable to connect"
     
     return jsonify({
         "status": "healthy",
