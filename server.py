@@ -49,7 +49,7 @@ def configure_logging():
     stream_handler.setFormatter(formatter)
     logger.addHandler(stream_handler)
 
-    logger.debug("Logging configured. Writing to %s", log_path)
+    logger.debug("Logging configured.")
     return logger
 
 
