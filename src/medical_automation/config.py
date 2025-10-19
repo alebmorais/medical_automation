@@ -4,7 +4,7 @@ Supports multiple environments (development, production) and uses environment va
 """
 import os
 from pathlib import Path
-from typing import Optional, List
+from typing import List, Optional, TYPE_CHECKING
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -91,11 +91,11 @@ class Config:
         if not cls.DEBUG and cls.SECRET_KEY == "dev-secret-key-change-in-production":
             raise ValueError("SECRET_KEY must be set in production.")
         return True
+ 
 
-
- Select environment (single class; DEBUG toggles stricter checks)
+# Select environment (single class; DEBUG toggles stricter checks)
 ENV = os.getenv("ENVIRONMENT", "development").lower()
 
-Exported config handle
-config = Config
+# Exported config handle
+config = Config()
 config.ensure_directories()
