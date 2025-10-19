@@ -1,6 +1,6 @@
 def test_get_categories(app_client):
     resp = app_client.get("/medical/categories")
-    assert resp.status_code == 200
+    assert resp.status_code == 200, f"Expected status code 200 but got {resp.status_code}"
     cats = resp.get_json()
     assert "Cardiology" in cats
     if "Neurology" not in cats: raise ValueError("Neurology category not found")
