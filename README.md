@@ -123,7 +123,7 @@ To ensure the unified server runs automatically on boot, we will create a `syste
     ProtectSystem=strict
     ProtectHome=yes
     PrivateTmp=yes
-    ReadWritePaths=/opt/medical_automation
+    ReadWritePaths=/opt/medical_automation /var/log/medical_automation
 
     [Install]
     WantedBy=multi-user.target
