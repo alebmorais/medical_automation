@@ -30,7 +30,7 @@ def configure_logging():
         log_dir.mkdir(parents=True, exist_ok=True)
     except OSError as e:
         # Fall back to base directory if we cannot create the requested folder
-        print(f"WARNING: Could not create log directory '{log_dir}'. Logging to application directory instead. Error: {e}", file=sys.stderr)
+        print("WARNING: Could not create the configured log directory. Logging to application directory instead. Error: {}".format(e), file=sys.stderr)
         log_dir = BASE_DIR
     log_path = log_dir / "medical_automation.log"
 
