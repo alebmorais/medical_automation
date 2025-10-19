@@ -10,7 +10,7 @@ def test_get_phrases(app_client):
     resp = app_client.get("/medical/phrases/Cardiology")
     assert resp.status_code == 200
     phrases = resp.get_json()
-    assert "Normal sinus rhythm" in phrases
+    if "Normal sinus rhythm" not in phrases: raise ValueError("Expected phrase not found in response")
 
 
 def test_add_phrase_and_search_then_delete(app_client):
