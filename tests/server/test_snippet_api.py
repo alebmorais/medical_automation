@@ -13,7 +13,7 @@ def test_get_all_and_one(app_client):
 
     r = app_client.get("/snippets/addr")
     assert r.status_code == 200
-    assert r.get_json()["full_text"].startswith("123 Main")
+    if not r.get_json()["full_text"].startswith("123 Main"): raise ValueError("Expected full_text to start with '123 Main'")
 
 
 def test_add_update_delete_snippet(app_client):
