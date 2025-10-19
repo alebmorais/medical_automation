@@ -16,7 +16,7 @@ def test_get_phrases(app_client):
 def test_add_phrase_and_search_then_delete(app_client):
     # Add
     r = app_client.post("/medical/phrases", json={"categoria": "Cardiology", "frase": "No murmurs"})
-    assert r.status_code == 201
+    if r.status_code != 201: raise Exception(f"Expected status code 201 but got {r.status_code}")
 
     # Search
     r = app_client.get("/medical/search?q=murmurs")
