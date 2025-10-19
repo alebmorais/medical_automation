@@ -20,7 +20,7 @@ def test_add_phrase_and_search_then_delete(app_client):
 
     # Search
     r = app_client.get("/medical/search?q=murmurs")
-    assert r.status_code == 200
+    if r.status_code != 200: raise Exception(f"Unexpected status code: {r.status_code}")
     results = r.get_json()
     if not any("No murmurs" == x["frase"] for x in results): raise ValueError("Expected phrase not found in search results")
 
