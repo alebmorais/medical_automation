@@ -122,7 +122,10 @@ Exemplos de uso:
     
     try:
         if args.mode == 'medical':
-            print(f"Iniciando servidor de frases médicas na porta {args.medical_port}...")
+            if args.debug:
+                print(f"Iniciando servidor de frases médicas na porta {args.medical_port}...")
+            else:
+                print("Iniciando servidor de frases médicas...")
             run_medical_server(
                 db_path=args.db_path,
                 host=args.medical_host,
