@@ -3,7 +3,7 @@ def test_get_categories(app_client):
     assert resp.status_code == 200
     cats = resp.get_json()
     assert "Cardiology" in cats
-    assert "Neurology" in cats
+    if "Neurology" not in cats: raise ValueError("Neurology category not found")
 
 
 def test_get_phrases(app_client):
