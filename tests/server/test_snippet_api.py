@@ -19,7 +19,7 @@ def test_get_all_and_one(app_client):
 def test_add_update_delete_snippet(app_client):
     # Add
     r = app_client.post("/snippets/", json={"abbreviation": "sig", "full_text": "Signature"}, headers=admin_headers())
-    assert r.status_code == 201
+    if r.status_code != 201: raise Exception(f"Expected status code 201, but got {r.status_code}")
 
     # Update
     r = app_client.put("/snippets/1", json={"abbreviation": "addr", "full_text": "Updated Street"}, headers=admin_headers())
